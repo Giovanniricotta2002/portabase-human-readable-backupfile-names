@@ -9,16 +9,17 @@ import {dispatchStorage} from "@/features/storages/utils/storages.dispatch";
 import {v4 as uuidv4} from "uuid";
 import {getTodayISODate} from "@/utils/date-formatting";
 import {withUpdatedAt} from "@/db/utils";
-import {getBackupFolderName} from "@/utils/file-prefix";
+import {getBackupExtension, getBackupFolderName} from "@/utils/file-prefix";
+
 
 export const migrationAction = userAction.inputSchema(
     z.object({
         targetDatabaseId: z.string(),
         backupIds: z.array(z.string()),
     })
-).action(async ({ parsedInput }): Promise<ServerActionResult<{}>> => {
+).action(async ({parsedInput}): Promise<ServerActionResult<{}>> => {
 
-    const { targetDatabaseId, backupIds } = parsedInput;
+    const {targetDatabaseId, backupIds} = parsedInput;
 
     let hasError = false;
 
@@ -90,7 +91,7 @@ export const migrationAction = userAction.inputSchema(
                             })
                             .returning();
 
-                        const fileName = `${uuidv4()}.tar.gz`;
+                        const fileName = `${uuidv4()}${getBackupExtension(storage.path ?? "")}`;
                         const pathTo = `${getBackupFolderName()}/${getTodayISODate()}/${fileName}`;
 
                         try {
@@ -126,7 +127,7 @@ export const migrationAction = userAction.inputSchema(
                                 )
                                 .where(eq(drizzleDb.schemas.backupStorage.id, backupStorage.id));
 
-                            return { success: true };
+                            return {success: true};
 
                         } catch (error) {
 
@@ -141,7 +142,7 @@ export const migrationAction = userAction.inputSchema(
                                 )
                                 .where(eq(drizzleDb.schemas.backupStorage.id, backupStorage.id));
 
-                            return { success: false };
+                            return {success: false};
                         }
                     })
                 );
