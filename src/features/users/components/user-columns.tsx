@@ -11,10 +11,11 @@ import {UserActionsCell} from "@/features/users/components/user-actions-cell";
 
 type UsersListColumnsProps = {
     isPasswordAuthEnabled: boolean;
+    canSendEmail: boolean;
     avatarUrls?: Record<string, string | undefined>;
 }
 
-export function usersListColumns({ isPasswordAuthEnabled, avatarUrls }: UsersListColumnsProps): ColumnDef<User>[] {
+export function usersListColumns({ isPasswordAuthEnabled, canSendEmail, avatarUrls }: UsersListColumnsProps): ColumnDef<User>[] {
 
     return [
         {
@@ -90,7 +91,8 @@ export function usersListColumns({ isPasswordAuthEnabled, avatarUrls }: UsersLis
         {
             id: "actions",
             header: "Actions",
-            cell: ({row}) => <UserActionsCell user={row.original} isPasswordAuthEnabled={isPasswordAuthEnabled} />,
+            cell: ({row}) => <UserActionsCell user={row.original} isPasswordAuthEnabled={isPasswordAuthEnabled}
+                                                  canSendEmail={canSendEmail}/>,
         },
     ];
 }

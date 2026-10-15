@@ -5,7 +5,8 @@ export function generateValidPassword(length = 12) {
     const special = '#?!@$%^&*-';
     const all = upper + lower + numbers + special;
 
-    const getRandomChar = (set: string) => set[Math.floor(Math.random() * set.length)];
+    const randomInt = (max: number) => crypto.getRandomValues(new Uint32Array(1))[0] % max;
+    const getRandomChar = (set: string) => set[randomInt(set.length)];
 
     const passwordChars = [
         getRandomChar(upper),
@@ -19,7 +20,7 @@ export function generateValidPassword(length = 12) {
     }
 
     for (let i = passwordChars.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
+        const j = randomInt(i + 1);
         [passwordChars[i], passwordChars[j]] = [passwordChars[j], passwordChars[i]];
     }
 
