@@ -13,9 +13,11 @@ import {db} from "@/db";
 import {and, eq} from "drizzle-orm";
 import {zEmail, zString} from "@/lib/zod";
 import {withUpdatedAt} from "@/db/utils";
-import {userAction} from "@/lib/safe-actions/actions";
+import {superAdminAction} from "@/lib/safe-actions/actions";
 import {addMemberOrganizationAction} from "@/features/organizations/actions/add-member.action";
 import {sendEmail} from "@/lib/email";
+import {isSmtpConfigured} from "@/lib/email/helpers";
+import {getSettings} from "@/db/services/setting";
 import EmailCreateUser from "@/components/emails/email-create-user";
 import {SignUpUser} from "@/types/auth";
 import {createUserDb} from "@/db/services/user";
@@ -25,12 +27,17 @@ import {logger} from "@/lib/logger";
 
 const log = logger.child({module: "features/users/actions/user"});
 
-export const createUserAction = userAction
+export type CreatedUser = {
+    user: User;
+    password?: string;
+};
+
+export const createUserAction = superAdminAction
     .inputSchema(UserSchema)
-    .action(async ({parsedInput}): Promise<ServerActionResult<User>> => {
+    .action(async ({parsedInput}): Promise<ServerActionResult<CreatedUser>> => {
         try {
             const isPasswordAuthEnabled = env.AUTH_EMAIL_PASSWORD_ENABLED === "true";
-            let password;
+            let password: string | undefined;
 
             const userData: SignUpUser = {
                 name: parsedInput.name || extractNameFromEmail(parsedInput.email),
@@ -48,19 +55,24 @@ export const createUserAction = userAction
             const newUser = await createUserDb(userData);
 
             if (newUser) {
-                try {
-                    await sendEmail({
-                        to: parsedInput.email,
-                        subject: "Your account is created",
-                        html: await render(
-                            EmailCreateUser({
-                                password: password,
-                                email: parsedInput.email,
-                            }),
-                        ),
-                    });
-                } catch (emailError) {
-                    log.error({err: emailError}, "welcome email failed");
+                let emailed = false;
+                const wantsEmail = !password || parsedInput.sendCredentialsByEmail;
+                if (wantsEmail && isSmtpConfigured(await getSettings())) {
+                    try {
+                        await sendEmail({
+                            to: parsedInput.email,
+                            subject: "Your account is created",
+                            html: await render(
+                                EmailCreateUser({
+                                    password: password,
+                                    email: parsedInput.email,
+                                }),
+                            ),
+                        });
+                        emailed = true;
+                    } catch (emailError) {
+                        log.error({err: emailError}, "welcome email failed");
+                    }
                 }
 
                 const defaultOrganization = await db.query.organization.findFirst({
@@ -79,7 +91,7 @@ export const createUserAction = userAction
 
                 return {
                     success: true,
-                    value: newUser,
+                    value: {user: newUser, password: emailed ? undefined : password},
                     actionSuccess: {
                         message: "user_created",
                     },
@@ -104,7 +116,7 @@ export const createUserAction = userAction
         }
     });
 
-export const updateUserAction = userAction
+export const updateUserAction = superAdminAction
     .inputSchema(
         z.object({
             id: zString(),
@@ -155,7 +167,7 @@ export const updateUserAction = userAction
         }
     });
 
-export const setSuperAdminOwnerOfOrganizationsOwnedByUser = userAction
+export const setSuperAdminOwnerOfOrganizationsOwnedByUser = superAdminAction
     .inputSchema(
         z.object({
             userId: z.string(),

@@ -91,15 +91,6 @@ export default async function RoutePage(
     )
     .then((rows) => rows.length > 0);
 
-  const [settings] = await db
-    .select()
-    .from(drizzleDb.schemas.setting)
-    .where(eq(drizzleDb.schemas.setting.name, "system"))
-    .limit(1);
-  if (!settings) {
-    notFound();
-  }
-
   const databaseHealthLogs = dbItem
     ? await getHealthLast12hLogs({ id: dbItem.id })
     : [];
@@ -113,7 +104,6 @@ export default async function RoutePage(
         <BackupModalProvider>
           <DatabaseContent
             activeMember={activeMember}
-            settings={settings}
             database={dbItem}
             databaseHealthLogs={databaseHealthLogs}
             isAlreadyRestore={isAlreadyRestore}

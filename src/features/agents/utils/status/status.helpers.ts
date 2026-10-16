@@ -115,12 +115,13 @@ export async function handleDatabases(body: Body, agent: Agent, lastContact: Dat
             }
         } else {
 
+            const isDashboardManaged = existingDatabase.config != null;
+
             const [databaseUpdated] = await dbClient
                 .update(drizzleDb.schemas.database)
                 .set(withUpdatedAt({
-                    name: db.name,
+                    ...(isDashboardManaged ? {} : {name: db.name, dbms: db.dbms as EDbmsSchema}),
                     agentId: agent.id,
-                    dbms: db.dbms as EDbmsSchema,
                     lastContact: db.pingStatus ? lastContact : existingDatabase.lastContact,
                     healthErrorCount: db.pingStatus ? null : existingDatabase.healthErrorCount,
                 }))

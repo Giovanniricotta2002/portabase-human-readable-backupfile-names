@@ -23,30 +23,38 @@ const username = req("Username");
 const password = req("Password");
 const databaseName = req("Database");
 
-const PostgresOptionsSchema = z
-  .object({
-    keep_ownership: z.boolean().optional(),
-    clean_mode: z
-      .enum(["none", "clean", "drop_schemas", "drop_database"])
-      .nullish(),
-  })
-  .optional();
+const PostgresOptionsBase = z.object({
+  keep_ownership: z.boolean().optional(),
+  clean_mode: z
+    .enum(["none", "clean", "drop_schemas", "drop_database"])
+    .nullish(),
+});
 
 export const PostgresqlConfigSchema = z.object({
-  host, port, username, password, database: databaseName, options: PostgresOptionsSchema,
+  host, port, username, password, database: databaseName,
+  options: PostgresOptionsBase.extend({
+    exclude_tables: z.array(z.string()).optional(),
+    exclude_schemas: z.array(z.string()).optional(),
+  }).optional(),
 });
 export const PostgresqlClusterConfigSchema = z.object({
   host, port, username, password,
   database: z.string().optional().default("postgres"),
-  options: PostgresOptionsSchema,
+  options: PostgresOptionsBase.optional(),
 });
 export const MysqlConfigSchema = z.object({
   host, port, username, password, database: databaseName,
   max_packet_size: z.string().optional().default("512M"),
 });
 export const MariadbConfigSchema = MysqlConfigSchema;
+const MssqlOptionsSchema = z
+  .object({
+    backup_format: z.enum(["dacpac", "bacpac"]).nullish(),
+  })
+  .optional();
+
 export const MssqlConfigSchema = z.object({
-  host, port, username, password, database: databaseName,
+  host, port, username, password, database: databaseName, options: MssqlOptionsSchema,
 });
 const MongoOptionsSchema = z
   .object({
@@ -103,7 +111,7 @@ export type DatabaseConfigFormType = z.infer<typeof DatabaseConfigFormSchema>;
 export type FieldDef = {
   name: string;
   label: string;
-  widget: "text" | "password" | "number" | "switch" | "select";
+  widget: "text" | "password" | "number" | "switch" | "select" | "lines";
   placeholder?: string;
   options?: { value: string; label: string }[];
   clearable?: boolean;
@@ -132,13 +140,30 @@ const CLEAN_MODE: FieldDef = {
   ]),
   clearable: true,
 };
+const EXCLUDE_TABLES: FieldDef = {
+  ...f("options.exclude_tables", "Exclude tables", "lines", "public.search_index__*"),
+  description:
+    "One pg_dump pattern per line (--exclude-table). Excluded tables are dropped on restore with drop_schemas or drop_database.",
+};
+const EXCLUDE_SCHEMAS: FieldDef = {
+  ...f("options.exclude_schemas", "Exclude schemas", "lines", "metabase_tmp"),
+  description:
+    "One pg_dump pattern per line (--exclude-schema). Excluded schemas are dropped on restore with drop_schemas or drop_database.",
+};
+const BACKUP_FORMAT: FieldDef = {
+  ...f("options.backup_format", "Backup format", "select", undefined, [
+    { value: "dacpac", label: "dacpac (agent default)" },
+    { value: "bacpac", label: "bacpac" },
+  ]),
+  clearable: true,
+};
 
 export const databaseFieldDefs: Record<EDbmsSchema, FieldDef[]> = {
-  postgresql: [HOST, PORT, USER, PASS, DB, KEEP_OWNERSHIP, CLEAN_MODE],
+  postgresql: [HOST, PORT, USER, PASS, DB, KEEP_OWNERSHIP, CLEAN_MODE, EXCLUDE_TABLES, EXCLUDE_SCHEMAS],
   "postgresql-cluster": [HOST, PORT, USER, PASS, f("database", "Database", "text", "defaults to postgres"), KEEP_OWNERSHIP, CLEAN_MODE],
   mysql: [HOST, PORT, USER, PASS, DB, f("max_packet_size", "Max packet size", "text", "512M")],
   mariadb: [HOST, PORT, USER, PASS, DB, f("max_packet_size", "Max packet size", "text", "512M")],
-  mssql: [HOST, PORT, USER, PASS, DB],
+  mssql: [HOST, PORT, USER, PASS, DB, BACKUP_FORMAT],
   mongodb: [
     {
       ...HOST,
@@ -210,6 +235,13 @@ export function pruneAgentConfig(
   for (const [key, value] of Object.entries(options as Record<string, unknown>)) {
     if (value === undefined || value === null || value === "") continue;
     if (value === false) continue; // default-off switches (keep_ownership, tls) ship nothing
+    if (Array.isArray(value)) {
+      const items = value
+        .map((v) => (typeof v === "string" ? v.trim() : v))
+        .filter((v) => v !== "" && v !== null && v !== undefined);
+      if (items.length > 0) kept[key] = items;
+      continue;
+    }
     kept[key] = value;
   }
 

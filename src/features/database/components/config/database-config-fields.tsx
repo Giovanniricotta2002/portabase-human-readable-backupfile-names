@@ -7,6 +7,7 @@ import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessa
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
@@ -55,6 +56,13 @@ export const DatabaseConfigFields = ({ dbms, form }: Props) => {
                       </Button>
                     ) : null}
                   </div>
+                ) : def.widget === "lines" ? (
+                  <Textarea
+                    rows={4}
+                    placeholder={def.placeholder}
+                    value={Array.isArray(field.value) ? field.value.join("\n") : ""}
+                    onChange={(e) => field.onChange(e.target.value.split("\n"))}
+                  />
                 ) : (
                   <Input
                     {...field}

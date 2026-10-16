@@ -1,7 +1,6 @@
 "use client";
 import {DatabaseBackupActionsModal} from "@/features/database/components/backup-actions-modal";
 import {DatabaseTabs, backupOnly} from "@/features/database/components/database-tabs";
-import {Setting} from "@/db/schema/01_setting";
 import {DatabaseWith} from "@/db/schema/07_database";
 import {MemberWithUser} from "@/db/schema/03_organization";
 import {useBackupModal} from "@/features/database/components/backup-modal-context";
@@ -27,7 +26,6 @@ import {LogsModal} from "@/features/logs/components/logs-modal";
 import {InfoTooltip} from "@/features/stats/components/info-tooltip";
 
 export type DatabaseContentProps = {
-    settings: Setting;
     isAlreadyRestore: boolean;
     database: DatabaseWith;
     activeMember: MemberWithUser;
@@ -176,7 +174,6 @@ export const DatabaseContent = (props: DatabaseContentProps) => {
                 <DatabaseBackupActionsModal/>
                 <DatabaseTabs
                     activeMember={props.activeMember}
-                    settings={props.settings}
                     database={database}
                     isAlreadyRestore={isAlreadyRestore}
                 />
