@@ -6,6 +6,7 @@ import { withUpdatedAt } from "@/db/utils";
 import { getDatabaseOrThrow, withAgentCheck } from "../../helpers";
 import { eventEmitter } from "@/lib/event";
 import { logger } from "@/lib/logger";
+import { refreshBackupManifest } from "@/features/storages/utils/backup-manifest";
 
 const log = logger.child({ module: "api/agent/backup/upload/status" });
 
@@ -67,6 +68,10 @@ export const PATCH = withAgentCheck(
         )
         .where(eq(drizzleDb.schemas.backupStorage.id, backupStorageId))
         .returning();
+
+      if (backupStorage && status === "success") {
+        refreshBackupManifest(database.projectId, backupStorage.storageChannelId);
+      }
 
       if (backup.storages.length > 0) {
         const hasSuccessfulStorage = backup.storages.some(
