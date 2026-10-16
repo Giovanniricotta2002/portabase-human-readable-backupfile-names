@@ -6,6 +6,7 @@ import {AdminUserList} from "@/features/users/components/admin-user-list";
 import {AdminUserAddModal} from "@/features/users/components/admin-user-add-modal";
 import {SUPPORTED_PROVIDERS} from "@/lib/auth/config";
 import {getSettings} from "@/db/services/setting";
+import {isSmtpConfigured} from "@/lib/email/helpers";
 import {resolveAvatarUrl} from "@/utils/resolve-avatar-url";
 import {currentUser} from "@/lib/auth/current-user";
 import {computeSystemPermissions} from "@/lib/acl/system-acl";
@@ -35,6 +36,7 @@ export default async function RoutePage(props: PageParams<{}>) {
 
     const credentialProvider = SUPPORTED_PROVIDERS.find(p => p.id === 'credential');
     const isPasswordAuthEnabled = credentialProvider?.isActive || false;
+    const canSendEmail = isSmtpConfigured(settings);
 
     const systemPermissions = computeSystemPermissions(user);
 
@@ -45,13 +47,15 @@ export default async function RoutePage(props: PageParams<{}>) {
                     <PageTitle className="mb-3">Active users</PageTitle>
                     {systemPermissions.isSuperAdmin && (
                         <PageActions>
-                            <AdminUserAddModal organizations={organizations}/>
+                            <AdminUserAddModal organizations={organizations} canSendEmail={canSendEmail}
+                                               isPasswordAuthEnabled={isPasswordAuthEnabled}/>
                         </PageActions>
                     )}
                 </div>
             </PageHeader>
             <PageContent className="flex flex-col gap-5">
-                <AdminUserList users={users} isPasswordAuthEnabled={isPasswordAuthEnabled} avatarUrls={avatarUrls}/>
+                <AdminUserList users={users} isPasswordAuthEnabled={isPasswordAuthEnabled} canSendEmail={canSendEmail}
+                               avatarUrls={avatarUrls}/>
             </PageContent>
         </Page>
     );
