@@ -66,12 +66,23 @@ export const PATCH = withAgentCheck(
             size: fileSize,
           }),
         )
-        .where(eq(drizzleDb.schemas.backupStorage.id, backupStorageId))
+        .where(
+          and(
+            eq(drizzleDb.schemas.backupStorage.id, backupStorageId),
+            eq(drizzleDb.schemas.backupStorage.backupId, backup.id),
+          ),
+        )
         .returning();
 
-      if (backupStorage && status === "success") {
-        refreshBackupManifest(database.projectId, backupStorage.storageChannelId);
+      if (!backupStorage) {
+        return NextResponse.json(
+          { error: "Unable to find the corresponding backup storage" },
+          { status: 404 },
+        );
       }
+
+      // Any status change can add or remove this storage from the manifest.
+      refreshBackupManifest(database.projectId, backupStorage.storageChannelId);
 
       if (backup.storages.length > 0) {
         const hasSuccessfulStorage = backup.storages.some(
