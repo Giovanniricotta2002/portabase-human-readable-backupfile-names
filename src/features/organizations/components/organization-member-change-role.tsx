@@ -33,6 +33,10 @@ export const OrganizationMemberChangeRoleModal = (props: OrganizationMemberChang
 
     const router = useRouter();
     const [role, setRole] = useState<MemberRoleType>(member.role as MemberRoleType);
+    const handleOpenChange = (nextOpen: boolean) => {
+        if (!nextOpen) setRole(member.role as MemberRoleType);
+        onOpenChangeAction(nextOpen);
+    };
 
     const mutation = useMutation({
         mutationFn: () =>
@@ -43,19 +47,19 @@ export const OrganizationMemberChangeRoleModal = (props: OrganizationMemberChang
             }),
         onSuccess: () => {
             toast.success("Member successfully updated");
-            onOpenChangeAction(false);
+            handleOpenChange(false);
             router.refresh();
         },
         onError: (error) => {
             toast.error("An error occurred while updating member");
-            onOpenChangeAction(false);
+            handleOpenChange(false);
         },
     });
 
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChangeAction}>
-            <DialogContent>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
+            <DialogContent preventOutsideClose={role !== member.role}>
                 <DialogHeader>
                     <DialogTitle>Change the user’s role</DialogTitle>
                     <DialogDescription>Modify the role of this user within your organization.</DialogDescription>
@@ -75,7 +79,7 @@ export const OrganizationMemberChangeRoleModal = (props: OrganizationMemberChang
                         <ButtonWithLoading
                             variant="outline"
                             onClick={() => {
-                                onOpenChangeAction(false);
+                                handleOpenChange(false);
                             }}
                         >
                             Cancel

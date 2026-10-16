@@ -9,13 +9,15 @@ import { toast } from "sonner";
 import { BackupCodeSchema, OtpSchema, OtpSchemaType } from "../schemas/2fa.schema";
 import { authClient } from "@/lib/auth/auth-client";
 import { useState } from "react";
+import {useReportFormDirty} from "@/hooks/use-report-form-dirty";
 
 type TwoFactorFormProps = {
     onSuccess?: (success: boolean) => void;
     onSuccessData?: (data: any) => void;
+    onDirtyChange?: (dirty: boolean) => void;
 };
 
-export default function TwoFactorForm({ onSuccess, onSuccessData }: TwoFactorFormProps) {
+export default function TwoFactorForm({ onSuccess, onSuccessData, onDirtyChange }: TwoFactorFormProps) {
 
     const [isBackupCodeMode, setIsBackupCodeMode] = useState(false);
 
@@ -25,6 +27,7 @@ export default function TwoFactorForm({ onSuccess, onSuccessData }: TwoFactorFor
             code: "",
         },
     });
+    useReportFormDirty(otpForm, onDirtyChange);
 
     const { mutate: verifyOtp, isPending: isVerifyingOtp } = useMutation({
         mutationFn: async (values: OtpSchemaType) => {

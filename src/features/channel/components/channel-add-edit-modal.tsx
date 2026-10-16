@@ -43,6 +43,7 @@ export const ChannelAddEditModal = ({
                                     }: ChannelAddModalProps) => {
     const isMobile = useIsMobile();
     const [openInternal, setOpen] = useState(open);
+    const [isDirty, setIsDirty] = useState(false);
     const isLocalSystem = channel?.provider === "local";
 
     const isCreate = !Boolean(channel);
@@ -76,7 +77,7 @@ export const ChannelAddEditModal = ({
                     }
                 </DialogTrigger>
             )}
-            <DialogContent onOpenAutoFocus={(e) => e.preventDefault()}>
+            <DialogContent onOpenAutoFocus={(e) => e.preventDefault()} preventOutsideClose={isDirty}>
                 <DialogHeader>
                     <DialogTitle> {isCreate ? "Add" : "Edit"} {channelText} Channel</DialogTitle>
                     <DialogDescription>
@@ -95,6 +96,7 @@ export const ChannelAddEditModal = ({
                                             </TabsList>
                                             <TabsContent className="h-full justify-between" value="configuration">
                                                 <ChannelForm
+                                                    onDirtyChange={setIsDirty}
                                                     kind={kind}
                                                     adminView={adminView}
                                                     defaultValues={channel}
@@ -107,6 +109,7 @@ export const ChannelAddEditModal = ({
                                             </TabsContent>
                                             <TabsContent className="h-full justify-between" value="organizations">
                                                 <ChannelOrganisationForm
+                                                    onDirtyChange={setIsDirty}
                                                     defaultValues={channel}
                                                     kind={kind}
                                                     organizations={organizations}
@@ -116,6 +119,7 @@ export const ChannelAddEditModal = ({
                                         :
                                         <>
                                             <ChannelForm
+                                                onDirtyChange={setIsDirty}
                                                 kind={kind}
                                                 adminView={adminView}
                                                 defaultValues={channel}
@@ -132,6 +136,7 @@ export const ChannelAddEditModal = ({
                             :
                             <>
                                 <ChannelOrganisationForm
+                                    onDirtyChange={setIsDirty}
                                     defaultValues={channel}
                                     kind={kind}
                                     organizations={organizations}

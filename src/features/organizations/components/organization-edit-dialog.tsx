@@ -28,6 +28,7 @@ export const EditOrganizationDialog = ({
                                            currentUser,
                                        }: EditOrganizationDialogProps) => {
     const [open, setOpen] = useState(false);
+    const [isDirty, setIsDirty] = useState(false);
     const router = useRouter();
 
     return (
@@ -39,11 +40,13 @@ export const EditOrganizationDialog = ({
             </DialogTrigger>
             <DialogContent
                 onOpenAutoFocus={(e) => e.preventDefault()}
+                preventOutsideClose={isDirty}
             >
                 <DialogHeader>
                     <DialogTitle>Edit {getOrganizationDisplayName(organization)}</DialogTitle>
                 </DialogHeader>
                 <OrganizationForm
+                    onDirtyChange={setIsDirty}
                     onSuccess={() => {
                         setOpen(false)
                         router.refresh()

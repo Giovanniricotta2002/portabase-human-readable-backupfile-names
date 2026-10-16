@@ -12,20 +12,24 @@ import { toast } from "sonner";
 import { authClient } from "@/lib/auth/auth-client";
 import { ResetPasswordSecuritySchema, ResetPasswordSecuritySchemaType } from "../schemas/security.schema";
 import {PasswordInput} from "@/components/ui/password-input";
+import {useReportFormDirty} from "@/hooks/use-report-form-dirty";
 
 type ResetPasswordFormProps = {
     onSuccess?: () => void;
+    onDirtyChange?: (dirty: boolean) => void;
     isDefault?: boolean;
 };
 
-export default function ResetPasswordForm({ onSuccess, isDefault }: ResetPasswordFormProps) {
+export default function ResetPasswordForm({ onSuccess, onDirtyChange, isDefault }: ResetPasswordFormProps) {
     const router = useRouter();
 
     const [allowConfirmPassword, setAllowConfirmPassword] = useState(false);
 
     const form = useZodForm({
         schema: ResetPasswordSecuritySchema,
+        defaultValues: {currentPassword: "", newPassword: "", confirmPassword: ""},
     });
+    useReportFormDirty(form, onDirtyChange);
 
     const { mutate: changePassword, isPending: isChangingPassword } = useMutation({
         mutationFn: async (values: ResetPasswordSecuritySchemaType) => {

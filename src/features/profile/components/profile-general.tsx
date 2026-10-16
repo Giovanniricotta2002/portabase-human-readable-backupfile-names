@@ -23,13 +23,15 @@ import {User} from "@/db/schema/02_user";
 import {useAcl} from "@/lib/acl/acl-context";
 import {ProfileSchema, ProfileSchemaType} from "../schemas/general.schema";
 import {AvatarWithUpload} from "@/features/profile/components/avatar-with-upload";
+import {useReportFormDirty} from "@/hooks/use-report-form-dirty";
 
 interface ProfileGeneralProps {
     user: User;
     avatarUrl?: string;
+    onDirtyChange?: (dirty: boolean) => void;
 }
 
-export function ProfileGeneral({user, avatarUrl}: ProfileGeneralProps) {
+export function ProfileGeneral({user, avatarUrl, onDirtyChange}: ProfileGeneralProps) {
     const router = useRouter();
     const {isSuperAdminAndDemo} = useAcl()
 
@@ -40,6 +42,7 @@ export function ProfileGeneral({user, avatarUrl}: ProfileGeneralProps) {
             role: user.role || "",
         },
     });
+    useReportFormDirty(profileForm, onDirtyChange);
 
     const {mutate: updateProfile, isPending: isUpdatingProfile} = useMutation({
         mutationFn: async (values: ProfileSchemaType) => {

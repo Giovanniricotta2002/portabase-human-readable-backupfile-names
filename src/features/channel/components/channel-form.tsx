@@ -33,6 +33,7 @@ import {
 import {
     addNotificationChannelAction, updateNotificationChannelAction
 } from "@/features/channel/components/notifications/channel.action";
+import {useReportFormDirty} from "@/hooks/use-report-form-dirty";
 
 
 type NotifierFormProps = {
@@ -41,9 +42,10 @@ type NotifierFormProps = {
     defaultValues?: NotificationChannelWith | StorageChannelWith
     adminView?: boolean
     kind: ChannelKind
+    onDirtyChange?: (dirty: boolean) => void;
 };
 
-export const ChannelForm = ({onSuccessAction, organization, defaultValues, kind}: NotifierFormProps) => {
+export const ChannelForm = ({onSuccessAction, organization, defaultValues, kind, onDirtyChange}: NotifierFormProps) => {
 
     const router = useRouter();
     const isCreate = !Boolean(defaultValues);
@@ -53,6 +55,7 @@ export const ChannelForm = ({onSuccessAction, organization, defaultValues, kind}
         // @ts-expect-error — defaultValues type is a union of notification/storage channel types
         defaultValues: {...defaultValues},
     });
+    useReportFormDirty(form, onDirtyChange);
 
     useEffect(() => {
         form.reset(defaultValues ? {...defaultValues} : {enabled: true});
@@ -85,6 +88,7 @@ export const ChannelForm = ({onSuccessAction, organization, defaultValues, kind}
 
             if (inner?.success) {
                 toast.success(inner.actionSuccess?.message);
+                form.reset(form.getValues());
                 isCreate && onSuccessAction?.();
                 router.refresh();
             } else {
@@ -114,7 +118,7 @@ export const ChannelForm = ({onSuccessAction, organization, defaultValues, kind}
                             )}
                             onClick={() => {
                                 if (type.preview) return;
-                                form.setValue("provider", type.value as any);
+                                form.setValue("provider", type.value as any, {shouldDirty: true});
                                 form.setValue("config", {});
                             }}
                         >
@@ -187,7 +191,7 @@ export const ChannelForm = ({onSuccessAction, organization, defaultValues, kind}
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                            form.setValue("provider", undefined as any);
+                            form.setValue("provider", undefined as any, {shouldDirty: true});
                             form.setValue("config", undefined);
                         }}
                     >

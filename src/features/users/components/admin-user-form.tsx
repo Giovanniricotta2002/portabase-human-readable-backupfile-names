@@ -11,21 +11,26 @@ import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/c
 import {UserSchema, UserType} from "@/features/users/schemas/user.schema";
 import {toast} from "sonner";
 import {createUserAction} from "@/features/users/actions/user.action";
+import {useReportFormDirty} from "@/hooks/use-report-form-dirty";
 
 type AdminUserFormProps = {
     onSuccess?: () => void;
+    onDirtyChange?: (dirty: boolean) => void;
     organizations: Organization[];
 };
 
-export const AdminUserForm = ({onSuccess, organizations}: AdminUserFormProps) => {
+export const AdminUserForm = ({onSuccess, onDirtyChange, organizations}: AdminUserFormProps) => {
 
     const router = useRouter();
     const form = useZodForm({
         schema: UserSchema,
         defaultValues: {
             role: "user",
+            name: "",
+            email: "",
         },
     });
+    useReportFormDirty(form, onDirtyChange);
 
     const onCancel = () => {
         form.reset();

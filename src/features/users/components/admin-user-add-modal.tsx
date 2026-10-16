@@ -15,6 +15,7 @@ type AdminUserAddModalProps = {
 export const AdminUserAddModal = ({ organizations }: AdminUserAddModalProps) => {
 
     const [open, setOpen] = useState(false);
+    const [isDirty, setIsDirty] = useState(false);
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -23,11 +24,11 @@ export const AdminUserAddModal = ({ organizations }: AdminUserAddModalProps) => 
                     <Plus /> Create a user
                 </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent preventOutsideClose={isDirty}>
                 <DialogHeader>
                     <DialogTitle>Create a new user</DialogTitle>
                     <DialogDescription>To create a new user please provide following informations</DialogDescription>
-                        <AdminUserForm organizations={organizations} onSuccess={() => setOpen(false)} />
+                        <AdminUserForm organizations={organizations} onSuccess={() => setOpen(false)} onDirtyChange={setIsDirty} />
                 </DialogHeader>
             </DialogContent>
         </Dialog>

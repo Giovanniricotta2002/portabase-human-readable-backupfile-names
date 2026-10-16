@@ -29,6 +29,7 @@ type AgentDialogProps = {
 
 export const AgentDialog = ({agent, typeTrigger, organization, adminView, organizations}: AgentDialogProps) => {
     const [open, setOpen] = useState(false);
+    const [isDirty, setIsDirty] = useState(false);
     const isEdit = !!agent;
     const router = useRouter();
 
@@ -54,6 +55,7 @@ export const AgentDialog = ({agent, typeTrigger, organization, adminView, organi
             <DialogTrigger asChild>{getTrigger()}</DialogTrigger>
             <DialogContent
                 onOpenAutoFocus={(e) => e.preventDefault()}
+                preventOutsideClose={isDirty}
             >
                 <DialogHeader>
                     <DialogTitle>{isEdit ? `Edit ${agent.name}` : "Create new agent"}</DialogTitle>
@@ -67,6 +69,7 @@ export const AgentDialog = ({agent, typeTrigger, organization, adminView, organi
                             </TabsList>
                             <TabsContent className="h-full justify-between" value="configuration">
                                 <AgentForm
+                                    onDirtyChange={setIsDirty}
                                     organization={organization}
                                     onSuccess={() => {
                                         setOpen(false)
@@ -78,6 +81,7 @@ export const AgentDialog = ({agent, typeTrigger, organization, adminView, organi
                             </TabsContent>
                             <TabsContent className="h-full justify-between" value="organizations">
                                 <AgentOrganisationForm
+                                    onDirtyChange={setIsDirty}
                                     defaultValues={agent}
                                     organizations={organizations}
                                 />
@@ -86,6 +90,7 @@ export const AgentDialog = ({agent, typeTrigger, organization, adminView, organi
                         :
                         <>
                             <AgentForm
+                                onDirtyChange={setIsDirty}
                                 organization={organization}
                                 onSuccess={() => {
                                     setOpen(false)
