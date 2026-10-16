@@ -30,6 +30,8 @@ export const AdminUserForm = ({onSuccess, onDirtyChange, organizations, canSendE
         schema: UserSchema,
         defaultValues: {
             role: "user",
+            name: "",
+            email: "",
             sendCredentialsByEmail: canSendEmail,
         },
     });
