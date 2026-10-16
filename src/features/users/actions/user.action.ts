@@ -13,7 +13,7 @@ import {db} from "@/db";
 import {and, eq} from "drizzle-orm";
 import {zEmail, zString} from "@/lib/zod";
 import {withUpdatedAt} from "@/db/utils";
-import {superAdminAction, userAction} from "@/lib/safe-actions/actions";
+import {superAdminAction} from "@/lib/safe-actions/actions";
 import {addMemberOrganizationAction} from "@/features/organizations/actions/add-member.action";
 import {sendEmail} from "@/lib/email";
 import {isSmtpConfigured} from "@/lib/email/helpers";
@@ -116,7 +116,7 @@ export const createUserAction = superAdminAction
         }
     });
 
-export const updateUserAction = userAction
+export const updateUserAction = superAdminAction
     .inputSchema(
         z.object({
             id: zString(),
@@ -167,7 +167,7 @@ export const updateUserAction = userAction
         }
     });
 
-export const setSuperAdminOwnerOfOrganizationsOwnedByUser = userAction
+export const setSuperAdminOwnerOfOrganizationsOwnedByUser = superAdminAction
     .inputSchema(
         z.object({
             userId: z.string(),
