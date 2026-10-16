@@ -4,6 +4,7 @@ import {ServerActionResult} from "@/types/action-type";
 import {z} from "zod";
 import type {StorageInput} from "@/features/storages/types";
 import {dispatchStorage} from "@/features/storages/utils/storages.dispatch";
+import {refreshBackupManifestsForBackup} from "@/features/storages/utils/backup-manifest";
 import {db} from "@/db";
 import {and, eq, isNull, ne, sql} from "drizzle-orm";
 import * as drizzleDb from "@/db";
@@ -235,6 +236,7 @@ export const deleteBackupStorageAction = userAction
                 }))
                 .where(eq(drizzleDb.schemas.backupStorage.id, backupStorageId))
 
+            await refreshBackupManifestsForBackup(backupId)
 
             if (backupStorage.status !== "success" || !backupStorage.path) {
                 return {
@@ -353,6 +355,7 @@ export const deleteBackupAction = userAction
                 }))
                 .where(and(eq(drizzleDb.schemas.backup.id, backupId), eq(drizzleDb.schemas.backup.databaseId, databaseId)))
 
+            await refreshBackupManifestsForBackup(backupId)
 
             return {
                 success: true,

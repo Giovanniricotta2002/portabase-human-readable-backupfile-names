@@ -128,6 +128,7 @@ async function writeBackupManifest(projectId: string, storageChannelId: string) 
                 path,
                 file: Buffer.from(JSON.stringify(manifest, null, 2)),
                 contentType: "application/json",
+                overwrite: true,
             },
         },
         undefined,
