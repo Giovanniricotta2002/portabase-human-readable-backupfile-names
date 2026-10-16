@@ -29,7 +29,7 @@ export const UpdateOrganizationForm = ({onSuccessAction, defaultValues, disabled
     const form = useZodForm({
         schema: UpdateOrganizationSchema,
         defaultValues: defaultValues,
-        disabled: isDefaultOrganization || disabled,
+        disabled: disabled,
     });
 
 
@@ -82,7 +82,7 @@ export const UpdateOrganizationForm = ({onSuccessAction, defaultValues, disabled
             />
 
             <div className="flex gap-4 justify-end">
-                <ButtonWithLoading disabled={isDefaultOrganization || disabled} isPending={mutationUpdateOrganisation.isPending}>Validate</ButtonWithLoading>
+                <ButtonWithLoading disabled={disabled} isPending={mutationUpdateOrganisation.isPending}>Validate</ButtonWithLoading>
             </div>
         </Form>
     );
