@@ -191,7 +191,10 @@ export const deleteBackupStorageAction = userAction
 
 
             const backupStorage = await db.query.backupStorage.findFirst({
-                where: eq(drizzleDb.schemas.backupStorage.id, backupStorageId),
+                where: and(
+                    eq(drizzleDb.schemas.backupStorage.id, backupStorageId),
+                    eq(drizzleDb.schemas.backupStorage.backupId, backupId)
+                ),
             });
 
 
