@@ -34,6 +34,7 @@ export const ProjectDialog = ({
                                   isEmpty = false
                               }: ProjectDialogProps) => {
     const [open, setOpen] = useState(false);
+    const [isDirty, setIsDirty] = useState(false);
     const router = useRouter();
 
     return (
@@ -57,11 +58,13 @@ export const ProjectDialog = ({
             </DialogTrigger>
             <DialogContent
                 onOpenAutoFocus={(e) => e.preventDefault()}
+                preventOutsideClose={isDirty}
             >
                 <DialogHeader>
                     <DialogTitle>{isEdit ? `Edit ${project?.name}` : "Create new project"}</DialogTitle>
                 </DialogHeader>
                 <ProjectForm
+                    onDirtyChange={setIsDirty}
                     onSuccess={() => {
                         setOpen(false)
                         router.refresh()

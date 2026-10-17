@@ -1,7 +1,7 @@
 import {NextResponse} from "next/server";
 import fs from "fs";
 import path from "path";
-import {and, eq} from "drizzle-orm";
+import {and, eq, isNull} from "drizzle-orm";
 import {db} from "@/db";
 import * as drizzleDb from "@/db";
 import {env} from "@/env.mjs";
@@ -51,7 +51,10 @@ export async function POST(request: Request) {
                     }
 
                     const database = await db.query.database.findFirst({
-                        where: eq(drizzleDb.schemas.database.agentDatabaseId, generatedId),
+                        where: and(
+                            eq(drizzleDb.schemas.database.agentDatabaseId, generatedId),
+                            isNull(drizzleDb.schemas.database.deletedAt),
+                        ),
                     });
 
                     if (!database) {

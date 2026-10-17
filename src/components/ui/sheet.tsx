@@ -5,6 +5,8 @@ import * as SheetPrimitive from "@radix-ui/react-dialog"
 import { XIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { blockOutsideDismissal, useOutsideCloseFeedback } from "@/hooks/use-outside-close-feedback"
+import { Badge } from "@/components/ui/badge"
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />
@@ -48,15 +50,21 @@ function SheetContent({
                         className,
                         children,
                         side = "right",
+                        preventOutsideClose,
+                        onInteractOutside,
+                        onTransitionEnd,
                         ...props
                       }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
+  preventOutsideClose?: boolean
 }) {
+  const feedback = useOutsideCloseFeedback(preventOutsideClose)
   return (
       <SheetPortal>
         <SheetOverlay />
         <SheetPrimitive.Content
             data-slot="sheet-content"
+            data-nudging={feedback.isNudging || undefined}
             className={cn(
                 "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-50 flex flex-col gap-4 shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
                 side === "right" &&
@@ -71,9 +79,12 @@ function SheetContent({
                 "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom inset-x-0 bottom-0 h-auto border-t",
                 className
             )}
+            onInteractOutside={(event) => { onInteractOutside?.(event); blockOutsideDismissal(event, preventOutsideClose, feedback.onBlocked) }}
+            onTransitionEnd={(event) => { if (event.target === event.currentTarget && event.propertyName === "scale") feedback.onNudgePeak(); onTransitionEnd?.(event) }}
             {...props}
         >
           {children}
+          {feedback.showWarning && <Badge role="status" aria-label="Unsaved changes" variant="outline" className="absolute top-4 right-10 z-10 border-amber-200 bg-amber-50 px-1.5 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">Unsaved</Badge>}
           <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
             <XIcon className="size-4" />
             <span className="sr-only">Close</span>

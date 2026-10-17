@@ -21,6 +21,7 @@ import {
     PoliciesType,
     PolicyType,
 } from "@/features/database/schemas/channels-policy.schema";
+import {useReportFormDirty} from "@/hooks/use-report-form-dirty";
 
 export type ChannelEntry = { id: string; name: string; provider: string };
 
@@ -32,6 +33,7 @@ type ChannelPoliciesFormProps = {
     isPending?: boolean;
     onSave: (policies: PolicyType[]) => Promise<void>;
     onCancel?: () => void;
+    onDirtyChange?: (dirty: boolean) => void;
     noChannelsMessage?: ReactNode;
 };
 
@@ -44,6 +46,7 @@ export const ChannelPoliciesForm = ({
     onSave,
     onCancel,
     noChannelsMessage,
+    onDirtyChange,
 }: ChannelPoliciesFormProps) => {
     const isMobile = useIsMobile();
     const channelText = getChannelTextBasedOnKind(kind);
@@ -53,6 +56,7 @@ export const ChannelPoliciesForm = ({
         defaultValues: { policies: defaultPolicies },
         context: { kind },
     });
+    useReportFormDirty(form, onDirtyChange);
 
     const { fields, append, remove } = useFieldArray({ control: form.control, name: "policies" });
 

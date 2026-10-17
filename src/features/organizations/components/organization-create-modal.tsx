@@ -5,6 +5,7 @@ import {useMutation} from "@tanstack/react-query";
 import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle} from "@/components/ui/dialog";
 import {Button} from "@/components/ui/button";
 import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage, useZodForm} from "@/components/ui/form";
+import {useReportFormDirty} from "@/hooks/use-report-form-dirty";
 import {Input} from "@/components/ui/input";
 import {CreateOrganizationSchema, CreateOrganizationType} from "@/features/organizations/schemas/organization.schema";
 import {createOrganizationAction} from "@/features/organizations/actions/organization.action";
@@ -30,10 +31,13 @@ export function CreateOrganizationModal({
 
 
     const router = useRouter();
+    const [isDirty, setIsDirty] = useState(false);
 
     const form = useZodForm({
         schema: CreateOrganizationSchema,
+        defaultValues: {name: ""},
     });
+    useReportFormDirty(form, setIsDirty);
 
 
     const mutation = useMutation({
@@ -62,7 +66,7 @@ export function CreateOrganizationModal({
             form.reset()
             onOpenChange(state)
         }}>
-            <DialogContent className="sm:max-w-[425px] w-full">
+            <DialogContent className="sm:max-w-[425px] w-full" preventOutsideClose={isDirty}>
                 <DialogHeader>
                     <DialogTitle>Create a new organization</DialogTitle>
                 </DialogHeader>

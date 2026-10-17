@@ -14,10 +14,11 @@ import {getFileHeadersBasedOnDbms} from "@/utils/common";
 
 type UploadRetentionZoneProps = {
     onSuccessAction?: () => void;
+    onFileChange?: (hasFile: boolean) => void;
     database: DatabaseWith;
 };
 
-export const UploadBackupZone = ({onSuccessAction, database}: UploadRetentionZoneProps) => {
+export const UploadBackupZone = ({onSuccessAction, onFileChange, database}: UploadRetentionZoneProps) => {
     const queryClient = useQueryClient();
     const router = useRouter();
 
@@ -76,7 +77,7 @@ export const UploadBackupZone = ({onSuccessAction, database}: UploadRetentionZon
                     description="Import database backup"
                     fileKind={`Database file (${fileKindDescription})`}
                     dragMessage="Click or drag a database dump or .tar.gz here"
-                    onFileDropAction={(file: File) => setFile(file)}
+                    onFileDropAction={(file: File) => { setFile(file); onFileChange?.(true); }}
                 />
             )}
 

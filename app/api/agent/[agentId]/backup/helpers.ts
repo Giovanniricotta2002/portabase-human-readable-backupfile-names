@@ -1,5 +1,5 @@
 import {NextResponse} from "next/server";
-import {and, eq} from "drizzle-orm";
+import {and, eq, isNull} from "drizzle-orm";
 import {db} from "@/db";
 import * as drizzleDb from "@/db";
 import {logger} from "@/lib/logger";
@@ -35,7 +35,10 @@ export function withAgentCheck(handler: Function) {
 
 export async function getDatabaseOrThrow(generatedId: string) {
     const database = await db.query.database.findFirst({
-        where: eq(drizzleDb.schemas.database.agentDatabaseId, generatedId),
+        where: and(
+            eq(drizzleDb.schemas.database.agentDatabaseId, generatedId),
+            isNull(drizzleDb.schemas.database.deletedAt),
+        ),
         with: {
             project: { with: { alertPolicies: true } },
             alertPolicies: true,

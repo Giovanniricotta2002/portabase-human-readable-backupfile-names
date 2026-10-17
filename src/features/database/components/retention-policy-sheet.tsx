@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {useState} from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -36,6 +37,7 @@ const toRetentionSettings = (rp: RetentionPolicy | undefined | null): RetentionS
 };
 
 export const RetentionPolicySheet = ({ scope, retentionPolicy, hasBackupPolicy, queryKey }: RetentionPolicySheetProps) => {
+    const [isDirty, setIsDirty] = useState(false);
     const queryClient = useQueryClient();
     const router = useRouter();
 
@@ -59,7 +61,7 @@ export const RetentionPolicySheet = ({ scope, retentionPolicy, hasBackupPolicy, 
                     <Ruler />
                 </Button>
             </SheetTrigger>
-            <SheetContent className="flex gap-4 p-4 w-full md:w-[800px] max-w-[800px] max-h-screen overflow-y-scroll">
+            <SheetContent className="flex gap-4 p-4 w-full md:w-[800px] max-w-[800px] max-h-screen overflow-y-scroll" preventOutsideClose={isDirty}>
                 <SheetHeader>
                     <SheetTitle className="flex items-center gap-2 text-balance">
                         <Database className="h-5 w-5" />
@@ -72,6 +74,7 @@ export const RetentionPolicySheet = ({ scope, retentionPolicy, hasBackupPolicy, 
                 </SheetHeader>
                 {hasBackupPolicy ? (
                     <BackupRetentionSettingsForm
+                        onDirtyChange={setIsDirty}
                         defaultValues={toRetentionSettings(retentionPolicy)}
                         currentType={retentionPolicy?.type}
                         isPending={mutation.isPending}

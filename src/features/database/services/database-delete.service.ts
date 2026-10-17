@@ -1,4 +1,4 @@
-import {and, eq, isNull} from "drizzle-orm";
+import {and, eq, isNull, sql} from "drizzle-orm";
 import {db} from "@/db";
 import * as drizzleDb from "@/db";
 import {Database} from "@/db/schema/07_database";
@@ -85,7 +85,8 @@ export async function deleteDatabaseService(input: DeleteDatabaseInput): Promise
         .set(
             withUpdatedAt({
                 agentId: null,
-                agentDatabaseId: null,
+                // Dashboard-defined rows keep the id as a tombstone so the agent's cached echo is not re-registered (#516).
+                agentDatabaseId: sql`case when ${drizzleDb.schemas.database.config} is null then null else ${drizzleDb.schemas.database.agentDatabaseId} end`,
                 projectId: null,
                 backupPolicy: null,
                 deletedAt: new Date(),

@@ -20,12 +20,14 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Calendar, Save } from "lucide-react";
+import {useReportFormDirty} from "@/hooks/use-report-form-dirty";
 
 export type BackupRetentionSettingsFormProps = {
   defaultValues?: RetentionSettings;
   currentType?: string;
   isPending?: boolean;
   onSave: (values: RetentionSettings) => Promise<void>;
+  onDirtyChange?: (dirty: boolean) => void;
 };
 
 export const BackupRetentionSettingsForm = ({
@@ -33,6 +35,7 @@ export const BackupRetentionSettingsForm = ({
   currentType,
   isPending = false,
   onSave,
+  onDirtyChange,
 }: BackupRetentionSettingsFormProps) => {
   const form = useZodForm({
     schema: RetentionSettingsSchema,
@@ -42,6 +45,7 @@ export const BackupRetentionSettingsForm = ({
       gfs: { hourly: 24, daily: 7, weekly: 4, monthly: 12, yearly: 3 },
     },
   });
+  useReportFormDirty(form, onDirtyChange);
 
   const calculateTotalFiles = (values: RetentionSettings) => {
     if (values.type === "gfs" && values.gfs) {
@@ -74,6 +78,7 @@ export const BackupRetentionSettingsForm = ({
           className="flex flex-col gap-6 mt-0"
           onSubmit={async (values) => {
             await onSave(values);
+            form.reset(values);
           }}
         >
           <FormField

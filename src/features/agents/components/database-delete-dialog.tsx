@@ -54,7 +54,7 @@ export const DatabaseDeleteDialog = (props: DatabaseDeleteDialogProps) => {
 
     return (
         <Dialog open={props.open} onOpenChange={(o) => !props.isPending && props.onOpenChange(o)}>
-            <DialogContent className="sm:max-w-[480px]">
+            <DialogContent className="sm:max-w-[480px]" preventOutsideClose={Boolean(value)}>
                 <DialogHeader>
                     <DialogTitle>Delete database</DialogTitle>
                     <DialogDescription>

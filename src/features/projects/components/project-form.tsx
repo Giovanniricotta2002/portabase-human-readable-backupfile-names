@@ -12,6 +12,7 @@ import { MultiSelect } from "@/components/common/multi-select";
 import { toast } from "sonner";
 import {DatabaseWith} from "@/db/schema/07_database";
 import {Organization} from "@/db/schema/03_organization";
+import {useReportFormDirty} from "@/hooks/use-report-form-dirty";
 
 export type projectFormProps = {
     defaultValues?: ProjectType;
@@ -19,6 +20,7 @@ export type projectFormProps = {
     organization: Organization;
     projectId?: string;
     onSuccess?: (data: any) => void;
+    onDirtyChange?: (dirty: boolean) => void;
 };
 
 
@@ -39,6 +41,7 @@ export const ProjectForm = (props: projectFormProps) => {
 
     const formattedDefaultValues = {
         ...props.defaultValues,
+        name: props.defaultValues?.name ?? "",
         databases: !isCreate ? formatDefaultDatabases(props.defaultValues?.databases ?? []) : [],
     };
 
@@ -46,6 +49,7 @@ export const ProjectForm = (props: projectFormProps) => {
         schema: ProjectSchema,
         defaultValues: formattedDefaultValues,
     });
+    useReportFormDirty(form, props.onDirtyChange);
 
     const mutation = useMutation({
         mutationFn: async (values: ProjectType) => {
