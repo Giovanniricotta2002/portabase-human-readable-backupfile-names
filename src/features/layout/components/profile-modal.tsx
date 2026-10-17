@@ -25,10 +25,11 @@ type ProfileModalProps = {
 };
 
 export const ProfileModal = ({ user, sessions, currentSession, accounts, open, onOpenChange, providers, apiEnabled, avatarUrl }: ProfileModalProps) => {
-    const [isDirty, setIsDirty] = useState(false);
+    const [profileDirty, setProfileDirty] = useState(false);
+    const [accountDirty, setAccountDirty] = useState(false);
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="w-[95vw] h-[90vh] max-w-md lg:max-w-[1000px] lg:h-[800px] pb-6 p-0 overflow-hidden flex flex-col outline-none gap-0 rounded-xl bg-background" preventOutsideClose={isDirty}>
+            <DialogContent className="w-[95vw] h-[90vh] max-w-md lg:max-w-[1000px] lg:h-[800px] pb-6 p-0 overflow-hidden flex flex-col outline-none gap-0 rounded-xl bg-background" preventOutsideClose={profileDirty || accountDirty}>
                 <DialogHeader className="sr-only">
                     <DialogTitle>Settings</DialogTitle>
                     <DialogDescription>Manage your account settings</DialogDescription>
@@ -37,8 +38,8 @@ export const ProfileModal = ({ user, sessions, currentSession, accounts, open, o
                     <ProfileSidebar user={user} />
 
                     <div className="flex-1 overflow-y-auto bg-background h-full scroll-smooth">
-                        <TabsContent value="profile" className="mt-0 h-full p-6 lg:p-10 outline-none focus-visible:ring-0">
-                            <ProfileGeneral user={user} avatarUrl={avatarUrl} onDirtyChange={setIsDirty} />
+                        <TabsContent forceMount value="profile" className="mt-0 h-full p-6 lg:p-10 outline-none focus-visible:ring-0 data-[state=inactive]:hidden">
+                            <ProfileGeneral user={user} avatarUrl={avatarUrl} onDirtyChange={setProfileDirty} />
                         </TabsContent>
 
                         <TabsContent value="security" className="mt-0 h-full p-6 lg:p-10 outline-none focus-visible:ring-0">
@@ -57,8 +58,8 @@ export const ProfileModal = ({ user, sessions, currentSession, accounts, open, o
                             <ProfileProviders accounts={accounts} providers={providers} />
                         </TabsContent>
 
-                        <TabsContent value="account" className="mt-0 h-full p-6 lg:p-10 outline-none focus-visible:ring-0">
-                            <ProfileAccount user={user} apiEnabled={apiEnabled} onDirtyChange={setIsDirty} />
+                        <TabsContent forceMount value="account" className="mt-0 h-full p-6 lg:p-10 outline-none focus-visible:ring-0 data-[state=inactive]:hidden">
+                            <ProfileAccount user={user} apiEnabled={apiEnabled} onDirtyChange={setAccountDirty} />
                         </TabsContent>
 
                         <TabsContent value="appearance" className="mt-0 h-full p-6 lg:p-10 outline-none focus-visible:ring-0">

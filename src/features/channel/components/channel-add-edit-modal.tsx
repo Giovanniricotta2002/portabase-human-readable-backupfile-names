@@ -43,7 +43,8 @@ export const ChannelAddEditModal = ({
                                     }: ChannelAddModalProps) => {
     const isMobile = useIsMobile();
     const [openInternal, setOpen] = useState(open);
-    const [isDirty, setIsDirty] = useState(false);
+    const [configurationDirty, setConfigurationDirty] = useState(false);
+    const [organizationsDirty, setOrganizationsDirty] = useState(false);
     const isLocalSystem = channel?.provider === "local";
 
     const isCreate = !Boolean(channel);
@@ -77,14 +78,14 @@ export const ChannelAddEditModal = ({
                     }
                 </DialogTrigger>
             )}
-            <DialogContent onOpenAutoFocus={(e) => e.preventDefault()} preventOutsideClose={isDirty}>
+            <DialogContent className="grid-rows-[auto_minmax(0,1fr)] overflow-hidden" onOpenAutoFocus={(e) => e.preventDefault()} preventOutsideClose={configurationDirty || organizationsDirty}>
                 <DialogHeader>
                     <DialogTitle> {isCreate ? "Add" : "Edit"} {channelText} Channel</DialogTitle>
                     <DialogDescription>
                         Configure your {channelText.toLowerCase()} channel preferences.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="min-w-0">
+                <div className="min-w-0 min-h-0 overflow-y-auto">
                     <>
                         {!isLocalSystem ? (
                                 <>
@@ -94,9 +95,9 @@ export const ChannelAddEditModal = ({
                                                 <TabsTrigger value="configuration">Configuration</TabsTrigger>
                                                 <TabsTrigger value="organizations">Organizations</TabsTrigger>
                                             </TabsList>
-                                            <TabsContent className="h-full justify-between" value="configuration">
+                                            <TabsContent forceMount className="h-full justify-between data-[state=inactive]:hidden" value="configuration">
                                                 <ChannelForm
-                                                    onDirtyChange={setIsDirty}
+                                                    onDirtyChange={setConfigurationDirty}
                                                     kind={kind}
                                                     adminView={adminView}
                                                     defaultValues={channel}
@@ -107,9 +108,9 @@ export const ChannelAddEditModal = ({
                                                     }}
                                                 />
                                             </TabsContent>
-                                            <TabsContent className="h-full justify-between" value="organizations">
+                                            <TabsContent forceMount className="h-full justify-between data-[state=inactive]:hidden" value="organizations">
                                                 <ChannelOrganisationForm
-                                                    onDirtyChange={setIsDirty}
+                                                    onDirtyChange={setOrganizationsDirty}
                                                     defaultValues={channel}
                                                     kind={kind}
                                                     organizations={organizations}
@@ -119,7 +120,7 @@ export const ChannelAddEditModal = ({
                                         :
                                         <>
                                             <ChannelForm
-                                                onDirtyChange={setIsDirty}
+                                                onDirtyChange={setConfigurationDirty}
                                                 kind={kind}
                                                 adminView={adminView}
                                                 defaultValues={channel}
@@ -136,7 +137,7 @@ export const ChannelAddEditModal = ({
                             :
                             <>
                                 <ChannelOrganisationForm
-                                    onDirtyChange={setIsDirty}
+                                    onDirtyChange={setOrganizationsDirty}
                                     defaultValues={channel}
                                     kind={kind}
                                     organizations={organizations}

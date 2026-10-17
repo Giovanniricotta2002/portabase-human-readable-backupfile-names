@@ -55,7 +55,7 @@ export const ChannelForm = ({onSuccessAction, organization, defaultValues, kind,
         // @ts-expect-error — defaultValues type is a union of notification/storage channel types
         defaultValues: {...defaultValues},
     });
-    useReportFormDirty(form, onDirtyChange);
+    useReportFormDirty(form, onDirtyChange, "provider");
 
     useEffect(() => {
         form.reset(defaultValues ? {...defaultValues} : {enabled: true});
