@@ -11,6 +11,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { TwoFactorSetupContent } from "./two-factor-setup-content";
+import {useState} from "react";
 
 type Setup2FAModalProps = {
   onOpenChange: (open: boolean) => void;
@@ -19,6 +20,7 @@ type Setup2FAModalProps = {
 };
 
 export function Setup2FAProfileProviderModal({ onOpenChange, open, disabled }: Setup2FAModalProps) {
+  const [isDirty, setIsDirty] = useState(false);
   const router = useRouter();
 
   const handleSuccess = () => {
@@ -34,11 +36,11 @@ export function Setup2FAProfileProviderModal({ onOpenChange, open, disabled }: S
           Enable Two-Factor
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md" preventOutsideClose={isDirty}>
         <DialogHeader>
           <DialogTitle>Enable Two-Factor Authentication</DialogTitle>
         </DialogHeader>
-        <TwoFactorSetupContent onSuccess={handleSuccess} />
+        <TwoFactorSetupContent onSuccess={handleSuccess} onDirtyChange={setIsDirty} />
       </DialogContent>
     </Dialog>
   );

@@ -19,6 +19,7 @@ export const AdminUserAddModal = ({ organizations, canSendEmail, isPasswordAuthE
 
     const [open, setOpen] = useState(false);
     const [credentials, setCredentials] = useState<UserCredentials>();
+    const [isDirty, setIsDirty] = useState(false);
 
     const onOpenChange = (value: boolean) => {
         if (value) setCredentials(undefined);
@@ -37,6 +38,7 @@ export const AdminUserAddModal = ({ organizations, canSendEmail, isPasswordAuthE
                 </Button>
             </DialogTrigger>
             <DialogContent
+                preventOutsideClose={isDirty}
                 onInteractOutside={keepOpenWhileCredentialsShown}
                 onEscapeKeyDown={keepOpenWhileCredentialsShown}
             >
@@ -54,6 +56,7 @@ export const AdminUserAddModal = ({ organizations, canSendEmail, isPasswordAuthE
                             organizations={organizations}
                             canSendEmail={canSendEmail}
                             isPasswordAuthEnabled={isPasswordAuthEnabled}
+                            onDirtyChange={setIsDirty}
                             onSuccess={(created) => (created ? setCredentials(created) : setOpen(false))}
                         />
                     )}

@@ -26,12 +26,14 @@ import {
 import {toast} from "sonner";
 import {User} from "@/db/schema/02_user";
 import {authClient} from "@/lib/auth/auth-client";
+import {useReportFormDirty} from "@/hooks/use-report-form-dirty";
 
 export type organizationFormProps = {
     defaultValues?: OrganizationWithMembers;
     users: User[];
     currentUser: User;
     onSuccess?: (data: any) => void;
+    onDirtyChange?: (dirty: boolean) => void;
 };
 
 export const OrganizationForm = (props: organizationFormProps) => {
@@ -67,6 +69,7 @@ export const OrganizationForm = (props: organizationFormProps) => {
         schema: UpdateOrganizationSchema,
         defaultValues: formattedDefaultValues,
     });
+    useReportFormDirty(form, props.onDirtyChange);
 
     const mutation = useMutation({
         mutationFn: (values: UpdateOrganizationType) => updateOrganizationAction({

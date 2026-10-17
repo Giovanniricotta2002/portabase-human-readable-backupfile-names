@@ -9,14 +9,16 @@ import { ButtonWithLoading } from "@/components/common/button-with-loading";
 import {Button} from "@/components/ui/button";
 import {UserEditSchema, UserEditType, UserSchema} from "@/features/users/schemas/user.schema";
 import {updateUserAction} from "@/features/users/actions/user.action";
+import {useReportFormDirty} from "@/hooks/use-report-form-dirty";
 type AdminUserEditFormProps = {
     onSuccess?: () => void;
+    onDirtyChange?: (dirty: boolean) => void;
     defaultValues: {
         id: string;
     } & UserEditType;
 };
 
-export const AdminUserEditForm = ({ onSuccess, defaultValues }: AdminUserEditFormProps) => {
+export const AdminUserEditForm = ({ onSuccess, onDirtyChange, defaultValues }: AdminUserEditFormProps) => {
 
 
     const router = useRouter();
@@ -27,6 +29,7 @@ export const AdminUserEditForm = ({ onSuccess, defaultValues }: AdminUserEditFor
             email: defaultValues.email,
         },
     });
+    useReportFormDirty(form, onDirtyChange);
 
     const onCancel = () => {
         form.reset();

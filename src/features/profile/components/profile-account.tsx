@@ -21,13 +21,15 @@ import { EmailSchema, EmailSchemaType } from "../schemas/account.schema";
 import { BetterAuthError } from "@/types/auth";
 import { ProfileApiKeys } from "./profile-api-keys";
 import { useAcl } from "@/lib/acl/acl-context";
+import {useReportFormDirty} from "@/hooks/use-report-form-dirty";
 
 interface ProfileAccountProps {
     user: User;
     apiEnabled: boolean;
+    onDirtyChange?: (dirty: boolean) => void;
 }
 
-export function ProfileAccount({ user, apiEnabled }: ProfileAccountProps) {
+export function ProfileAccount({ user, apiEnabled, onDirtyChange }: ProfileAccountProps) {
     const router = useRouter();
     const { isSuperAdminAndDemo } = useAcl();
 
@@ -37,6 +39,7 @@ export function ProfileAccount({ user, apiEnabled }: ProfileAccountProps) {
             email: user.email,
         },
     });
+    useReportFormDirty(emailForm, onDirtyChange);
 
     const { mutate: updateEmail, isPending: isUpdatingEmail } = useMutation({
         mutationFn: async (values: EmailSchemaType) => {

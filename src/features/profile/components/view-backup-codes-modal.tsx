@@ -73,7 +73,7 @@ export function ViewBackupCodesModal({ onOpenChange, open, disabled }: ViewBacku
                     Regenerate Backup Codes
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md" preventOutsideClose={form.formState.isDirty || step === "CODES"}>
                 <DialogHeader>
                     <DialogTitle>Backup Codes</DialogTitle>
                     <DialogDescription>{step === "PASSWORD" ? "For security reasons, existing codes are hidden. You must generate a new set to view them." : "Save these codes securely. They will not be shown again once you close this window."}</DialogDescription>

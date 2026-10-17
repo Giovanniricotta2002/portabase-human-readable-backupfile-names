@@ -42,15 +42,18 @@ import { SafeActionResult } from "next-safe-action";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ZodString } from "zod";
+import {useReportFormDirty} from "@/hooks/use-report-form-dirty";
 
 type BackupActionsFormProps = {
   backup: BackupWith;
   action: DatabaseActionKind;
+  onDirtyChange?: (dirty: boolean) => void;
 };
 
 export const BackupActionsForm = ({
   backup,
   action,
+  onDirtyChange,
 }: BackupActionsFormProps) => {
   const filteredBackupStorages =
     backup.storages?.filter((storage) => storage.deletedAt === null) ?? [];
@@ -60,7 +63,9 @@ export const BackupActionsForm = ({
 
   const form = useZodForm({
     schema: BackupActionsSchema,
+    defaultValues: {backupStorageId: ""},
   });
+  useReportFormDirty(form, onDirtyChange);
   const selectedStorageId = form.watch("backupStorageId");
 
   const mutation = useMutation({

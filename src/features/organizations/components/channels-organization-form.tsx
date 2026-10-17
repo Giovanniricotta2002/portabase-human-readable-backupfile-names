@@ -18,18 +18,21 @@ import {
 } from "@/features/organizations/actions/channels-organization.action";
 import {ChannelKind} from "@/features/channel/components/channels-helpers";
 import {getOrganizationDisplayName} from "@/features/organizations/utils/get-organization-display-name";
+import {useReportFormDirty} from "@/hooks/use-report-form-dirty";
 
 
 type ChannelOrganisationFormProps = {
     organizations?: OrganizationWithMembers[];
     defaultValues?: NotificationChannelWith | StorageChannelWith
     kind: ChannelKind
+    onDirtyChange?: (dirty: boolean) => void;
 };
 
 export const ChannelOrganisationForm = ({
                                             organizations,
                                             defaultValues,
-                                            kind
+                                            kind,
+                                            onDirtyChange,
                                         }: ChannelOrganisationFormProps) => {
 
     const router = useRouter();
@@ -42,6 +45,7 @@ export const ChannelOrganisationForm = ({
             organizations: defaultOrganizationIds
         },
     });
+    useReportFormDirty(form, onDirtyChange);
 
     const formatOrganizationsList = (organizations: OrganizationWithMembers[]) => {
         return organizations
@@ -65,6 +69,7 @@ export const ChannelOrganisationForm = ({
 
             if (inner?.success) {
                 toast.success(inner.actionSuccess?.message);
+                form.reset(form.getValues());
                 router.refresh();
             } else {
                 toast.error(inner?.actionError?.message);

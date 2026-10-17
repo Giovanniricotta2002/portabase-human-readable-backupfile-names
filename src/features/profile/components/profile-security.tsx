@@ -256,14 +256,14 @@ export function ProfileSecurity({
                             </div>
                         </div>
 
-                        <Dialog open={isAddPasskeyOpen} onOpenChange={setIsAddPasskeyOpen}>
+                        <Dialog open={isAddPasskeyOpen} onOpenChange={(open) => { setIsAddPasskeyOpen(open); if (!open) setPasskeyName(""); }}>
                             <DialogTrigger asChild disabled={isSuperAdminAndDemo}>
                                 <Button variant="outline" size="sm" disabled={isSuperAdminAndDemo}>
                                     <Plus className="mr-2 h-4 w-4"/>
                                     Add Passkey
                                 </Button>
                             </DialogTrigger>
-                            <DialogContent>
+                            <DialogContent preventOutsideClose={Boolean(passkeyName)}>
                                 <DialogHeader>
                                     <DialogTitle>Add New Passkey</DialogTitle>
                                     <DialogDescription>
@@ -284,7 +284,7 @@ export function ProfileSecurity({
                                 <DialogFooter>
                                     <Button
                                         variant="outline"
-                                        onClick={() => setIsAddPasskeyOpen(false)}
+                                        onClick={() => { setPasskeyName(""); setIsAddPasskeyOpen(false); }}
                                     >
                                         Cancel
                                     </Button>

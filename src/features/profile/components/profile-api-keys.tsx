@@ -107,7 +107,7 @@ export function ProfileApiKeys() {
                         </div>
                     </div>
 
-                    <Dialog open={isAddApiKeyOpen} onOpenChange={setIsAddApiKeyOpen}>
+                    <Dialog open={isAddApiKeyOpen} onOpenChange={(open) => { setIsAddApiKeyOpen(open); if (!open) setApiKeyName(""); }}>
                         <DialogTrigger asChild disabled={isSuperAdminAndDemo}>
                             <Button variant="outline" size="sm" disabled={isSuperAdminAndDemo}>
                                 <Plus className="mr-2 h-4 w-4"/>
@@ -115,7 +115,7 @@ export function ProfileApiKeys() {
                             </Button>
                         </DialogTrigger>
 
-                        <DialogContent>
+                        <DialogContent preventOutsideClose={Boolean(apiKeyName)}>
                             <DialogHeader>
                                 <DialogTitle>Add New API Key</DialogTitle>
                                 <DialogDescription>
@@ -138,7 +138,7 @@ export function ProfileApiKeys() {
                             <DialogFooter>
                                 <Button
                                     variant="outline"
-                                    onClick={() => setIsAddApiKeyOpen(false)}
+                                    onClick={() => { setApiKeyName(""); setIsAddApiKeyOpen(false); }}
                                 >
                                     Cancel
                                 </Button>

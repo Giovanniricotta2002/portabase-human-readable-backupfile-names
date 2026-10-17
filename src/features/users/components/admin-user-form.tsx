@@ -13,24 +13,29 @@ import {UserSchema, UserType} from "@/features/users/schemas/user.schema";
 import {toast} from "sonner";
 import {createUserAction} from "@/features/users/actions/user.action";
 import {UserCredentials} from "@/features/users/components/user-credentials-view";
+import {useReportFormDirty} from "@/hooks/use-report-form-dirty";
 
 type AdminUserFormProps = {
     onSuccess?: (credentials?: UserCredentials) => void;
+    onDirtyChange?: (dirty: boolean) => void;
     organizations: Organization[];
     canSendEmail: boolean;
     isPasswordAuthEnabled: boolean;
 };
 
-export const AdminUserForm = ({onSuccess, organizations, canSendEmail, isPasswordAuthEnabled}: AdminUserFormProps) => {
+export const AdminUserForm = ({onSuccess, onDirtyChange, organizations, canSendEmail, isPasswordAuthEnabled}: AdminUserFormProps) => {
 
     const router = useRouter();
     const form = useZodForm({
         schema: UserSchema,
         defaultValues: {
             role: "user",
+            name: "",
+            email: "",
             sendCredentialsByEmail: canSendEmail,
         },
     });
+    useReportFormDirty(form, onDirtyChange);
 
     const onCancel = () => {
         form.reset();
