@@ -74,15 +74,21 @@ export async function handleDatabases(body: Body, agent: Agent, lastContact: Dat
         let backupSize: number | null = null
 
         if (!existingDatabase) {
-            const tombstone = await dbClient.query.database.findFirst({
-                where: and(
+            // A database deleted from the dashboard absorbs exactly one report: the agent's cached
+            // copy, which it drops once we return nothing (#516). Releasing the tombstone lets any
+            // later report, which can only come from databases.json, re-register as usual.
+            const [tombstone] = await dbClient
+                .update(drizzleDb.schemas.database)
+                .set(withUpdatedAt({agentDatabaseId: null}))
+                .where(and(
                     eq(drizzleDb.schemas.database.agentDatabaseId, db.generatedId),
                     isNotNull(drizzleDb.schemas.database.deletedAt),
-                ),
-                columns: {id: true},
-            });
-            // Deleted from the dashboard: returning nothing makes the agent drop it from its cache.
-            if (tombstone) continue;
+                ))
+                .returning({id: drizzleDb.schemas.database.id});
+            if (tombstone) {
+                log.info({name: "handleDatabases", generatedId: db.generatedId}, "Ignoring agent report of a database deleted from the dashboard");
+                continue;
+            }
 
             if (!isUUID(db.generatedId)) {
                 return NextResponse.json(
