@@ -58,7 +58,10 @@ export async function handleDatabases(body: Body, agent: Agent, lastContact: Dat
     for (const db of body.databases) {
 
         const existingDatabase = await dbClient.query.database.findFirst({
-            where: eq(drizzleDb.schemas.database.agentDatabaseId, db.generatedId),
+            where: and(
+                eq(drizzleDb.schemas.database.agentDatabaseId, db.generatedId),
+                isNull(drizzleDb.schemas.database.deletedAt),
+            ),
             with: {
                 project: true
             }
@@ -71,6 +74,16 @@ export async function handleDatabases(body: Body, agent: Agent, lastContact: Dat
         let backupSize: number | null = null
 
         if (!existingDatabase) {
+            const tombstone = await dbClient.query.database.findFirst({
+                where: and(
+                    eq(drizzleDb.schemas.database.agentDatabaseId, db.generatedId),
+                    isNotNull(drizzleDb.schemas.database.deletedAt),
+                ),
+                columns: {id: true},
+            });
+            // Deleted from the dashboard: returning nothing makes the agent drop it from its cache.
+            if (tombstone) continue;
+
             if (!isUUID(db.generatedId)) {
                 return NextResponse.json(
                     {error: "generatedId is not a valid uuid"},
