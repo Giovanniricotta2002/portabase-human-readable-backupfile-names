@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { EDbmsSchema } from "@/db/schema/types";
+import { canonicalize } from "@/lib/utils";
 
 const req = (label: string) =>
   z.string({ error: `${label} is required` }).min(1, `${label} is required`);
@@ -260,21 +261,6 @@ export function toAgentConfigJson(
     ...pruneAgentConfig(values.config),
     ...(generatedId ? { generated_id: generatedId } : {}),
   };
-}
-
-const isPlainObject = (v: unknown): v is Record<string, unknown> =>
-  typeof v === "object" && v !== null && !Array.isArray(v);
-
-function canonicalize(value: unknown): unknown {
-  if (!isPlainObject(value)) return value;
-  const out: Record<string, unknown> = {};
-  for (const key of Object.keys(value).sort()) {
-    const inner = canonicalize(value[key]);
-    if (inner === undefined || inner === null || inner === "") continue;
-    if (isPlainObject(inner) && Object.keys(inner).length === 0) continue;
-    out[key] = inner;
-  }
-  return out;
 }
 
 export function agentConfigSignature(
