@@ -36,11 +36,11 @@ export async function handleDatabases(body: Body, agent: Agent, lastContact: Dat
             rawConfig == null
                 ? null
                 : {
-                      name: database.name,
-                      type: database.dbms,
-                      ...(rawConfig as Record<string, unknown>),
-                      generated_id: database.agentDatabaseId,
-                  };
+                    name: database.name,
+                    type: database.dbms,
+                    ...(rawConfig as Record<string, unknown>),
+                    generated_id: database.agentDatabaseId,
+                };
 
         return {
             generatedId: database.agentDatabaseId,
@@ -74,9 +74,6 @@ export async function handleDatabases(body: Body, agent: Agent, lastContact: Dat
         let backupSize: number | null = null
 
         if (!existingDatabase) {
-            // A database deleted from the dashboard absorbs exactly one report: the agent's cached
-            // copy, which it drops once we return nothing (#516). Releasing the tombstone lets any
-            // later report, which can only come from databases.json, re-register as usual.
             const [tombstone] = await dbClient
                 .update(drizzleDb.schemas.database)
                 .set(withUpdatedAt({agentDatabaseId: null}))
@@ -86,7 +83,10 @@ export async function handleDatabases(body: Body, agent: Agent, lastContact: Dat
                 ))
                 .returning({id: drizzleDb.schemas.database.id});
             if (tombstone) {
-                log.info({name: "handleDatabases", generatedId: db.generatedId}, "Ignoring agent report of a database deleted from the dashboard");
+                log.info({
+                    name: "handleDatabases",
+                    generatedId: db.generatedId
+                }, "Ignoring agent report of a database deleted from the dashboard");
                 continue;
             }
 
@@ -97,7 +97,7 @@ export async function handleDatabases(body: Body, agent: Agent, lastContact: Dat
                 );
             }
             if (!dbmsEnumSchema.safeParse(db.dbms).success) {
-                log.error({name: "handleDatabases"},`Database type not available: ${db.dbms}`);
+                log.error({name: "handleDatabases"}, `Database type not available: ${db.dbms}`);
                 continue;
             }
 
@@ -162,7 +162,15 @@ export async function handleDatabases(body: Body, agent: Agent, lastContact: Dat
                     inArray(drizzleDb.schemas.backup.status, ["waiting", "ongoing"])
                 ),
                 orderBy: [
-                    sql`case when ${drizzleDb.schemas.backup.status} = 'waiting' then 0 else 1 end`,
+                    sql`case when
+                    ${drizzleDb.schemas.backup.status}
+                    =
+                    'waiting'
+                    then
+                    0
+                    else
+                    1
+                    end`,
                     desc(drizzleDb.schemas.backup.createdAt)
                 ]
             })

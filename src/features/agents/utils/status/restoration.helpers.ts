@@ -39,11 +39,6 @@ export async function handleFailedRestoration(restorationId: string, databaseId:
     }
 }
 
-/**
- * Picks up the database's waiting restoration and signs its backup URLs.
- * Returns null when there is nothing to restore on this tick; the caller still
- * reports the database to the agent.
- */
 export async function prepareRestoration(databaseId: string): Promise<{file: string | null; metaFile: string | null; size: number | null} | null> {
     const restoration = await dbClient.query.restoration.findFirst({
         where: and(eq(drizzleDb.schemas.restoration.databaseId, databaseId), eq(drizzleDb.schemas.restoration.status, "waiting")),
