@@ -43,10 +43,16 @@ const TARGET_GUARD_PATHS = [
   "/admin/set-user-password",
 ];
 
-const includesSuperadmin = (role: unknown): boolean =>
-  Array.isArray(role)
-    ? role.includes(SUPERADMIN_ROLE)
-    : role === SUPERADMIN_ROLE;
+const roleContainsSuperadmin = (role: unknown): boolean => {
+  const roles = Array.isArray(role)
+    ? role
+    : typeof role === "string"
+      ? role.split(",")
+      : [];
+  return roles.some(
+    (r) => (typeof r === "string" ? r.trim() : r) === SUPERADMIN_ROLE,
+  );
+};
 
 const forbidden = () =>
   NextResponse.json(
@@ -77,14 +83,22 @@ async function enforceRoleHierarchy(
 
   if (isRoleAssign) {
     const requestedRole = body?.role ?? body?.data?.role;
-    if (includesSuperadmin(requestedRole)) return forbidden();
+    if (roleContainsSuperadmin(requestedRole)) return forbidden();
   }
 
-  if (isTargetGuard && typeof body?.userId === "string") {
-    const target = await db.query.user.findFirst({
-      where: eq(drizzleDb.schemas.user.id, body.userId),
-    });
-    if (target?.role === SUPERADMIN_ROLE) return forbidden();
+  if (isTargetGuard) {
+    const userId = body?.userId;
+    if (typeof userId !== "string" || userId.length === 0) {
+      return forbidden();
+    }
+    try {
+      const target = await db.query.user.findFirst({
+        where: eq(drizzleDb.schemas.user.id, userId),
+      });
+      if (roleContainsSuperadmin(target?.role)) return forbidden();
+    } catch {
+      return forbidden();
+    }
   }
 
   return null;
