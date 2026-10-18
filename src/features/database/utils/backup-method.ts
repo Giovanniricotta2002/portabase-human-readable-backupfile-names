@@ -32,7 +32,12 @@ export function describeRun(storage: Pick<BackupStorage, "status" | "size" | "st
         const removed = stats.filesRemoved == null ? "" : `, ${stats.filesRemoved} removed`;
         return `${stats.filesNew} new, ${stats.filesChanged} changed, ${stats.filesUnmodified} unmodified${removed} file(s) · ${signedBytes(storage.size ?? 0)} new data`;
     }
-    const delta = stats.sizeDelta == null ? "" : ` · storage ${signedBytes(stats.sizeDelta)}`;
+    const delta =
+        stats.sizeDelta == null
+            ? ""
+            : stats.sizeDelta === 0
+              ? " · replica size unchanged"
+              : ` · replica size ${signedBytes(stats.sizeDelta)}`;
     if (stats.filesTransferred === 0 && stats.filesDeleted === 0) {
         return `Replica already matches the source: nothing transferred or deleted${delta}`;
     }

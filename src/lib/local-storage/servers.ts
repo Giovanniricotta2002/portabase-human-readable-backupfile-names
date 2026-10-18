@@ -15,7 +15,7 @@ const SERVERS: {name: string; args: (base: string) => string[]}[] = [
     },
     {
         name: "sync",
-        args: (base) => ["serve", "webdav", "--addr", "127.0.0.1:1082", "--baseurl", "/storage/sync", "--server-read-timeout", "24h", "--server-write-timeout", "24h", "--dir-cache-time", "0s", path.join(base, "sync")],
+        args: (base) => ["serve", "webdav", "--addr", "127.0.0.1:1082", "--baseurl", "/storage/sync", "--server-read-timeout", "24h", "--server-write-timeout", "24h", "--dir-cache-time", "5s", path.join(base, "sync")],
     },
 ];
 
