@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "@/db";
 import { eq } from "drizzle-orm";
 import * as drizzleDb from "@/db";
-import { createTransporter } from "@/lib/email/helpers";
+import { createTransporter, isSmtpConfigured } from "@/lib/email/helpers";
 import { Payload } from "@/lib/email/types";
 
 export const sendEmail = async (data: Payload) => {
@@ -16,13 +16,7 @@ export const sendEmail = async (data: Payload) => {
     throw new Error("SMTP system settings not found.");
   }
 
-  if (
-    !settings.smtpHost ||
-    !settings.smtpPort ||
-    !settings.smtpUser ||
-    !settings.smtpPassword ||
-    !settings.smtpFrom
-  ) {
+  if (!isSmtpConfigured(settings)) {
     console.warn("Incomplete SMTP settings. Email not sent.");
     return;
   }

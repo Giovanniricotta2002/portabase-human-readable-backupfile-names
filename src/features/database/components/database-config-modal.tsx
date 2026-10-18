@@ -166,6 +166,7 @@ export const DatabaseConfigModal = ({ agentId, agentVersion, database, trigger }
 
   const isDirty =
     agentConfigSignature(watched, generatedId) !== initialSignature;
+  const hasUnsavedChanges = isDirty || (tab === "json" && jsonText !== JSON.stringify(toAgentConfigJson(watched, generatedId), null, 2));
   const canSubmit = isDirty && !jsonError && !mutation.isPending;
 
   const isFromFile = !!database && database.config == null;
@@ -182,7 +183,7 @@ export const DatabaseConfigModal = ({ agentId, agentVersion, database, trigger }
       }}
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-w-lg" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <DialogContent className="max-w-lg" onOpenAutoFocus={(e) => e.preventDefault()} preventOutsideClose={hasUnsavedChanges}>
         <DialogHeader>
           <DialogTitle>{database ? "Configure database" : "Add database"}</DialogTitle>
           <DialogDescription>

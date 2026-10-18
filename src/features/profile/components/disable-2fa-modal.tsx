@@ -31,6 +31,7 @@ export function Disable2FAProfileProviderModal({ onOpenChange, open, disabled }:
 
     const router = useRouter();
     const [step, setStep] = useState<"OTP" | "PASSWORD">("OTP");
+    const [otpDirty, setOtpDirty] = useState(false);
 
     const passwordForm = useZodForm({
         schema: PasswordSchema,
@@ -74,7 +75,7 @@ export function Disable2FAProfileProviderModal({ onOpenChange, open, disabled }:
                     Disable Two-Factor
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-md" preventOutsideClose={otpDirty || passwordForm.formState.isDirty}>
                 <DialogHeader>
                     <DialogTitle>Disable Two-Factor Authentication</DialogTitle>
                     <DialogDescription>Are you sure you want to disable two-factor authentication? This will reduce the security of your account.</DialogDescription>
@@ -82,6 +83,7 @@ export function Disable2FAProfileProviderModal({ onOpenChange, open, disabled }:
 
                 {step === "OTP" && (
                     <TwoFactorForm
+                        onDirtyChange={setOtpDirty}
                         onSuccess={(success) => {
                             if (success) {
                                 setStep("PASSWORD");

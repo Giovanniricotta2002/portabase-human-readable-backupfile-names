@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import * as drizzleDb from "@/db";
 import { db as dbClient, db } from "@/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { sendNotificationsBackupRestore } from "@/features/notifications/utils/notifications.helpers";
 import { logger } from "@/lib/logger";
 import { withUpdatedAt } from "@/db/utils";
@@ -44,7 +44,10 @@ export async function POST(
     }
 
     const database = await db.query.database.findFirst({
-      where: eq(drizzleDb.schemas.database.agentDatabaseId, body.generatedId),
+      where: and(
+        eq(drizzleDb.schemas.database.agentDatabaseId, body.generatedId),
+        isNull(drizzleDb.schemas.database.deletedAt),
+      ),
       with: {
         alertPolicies: true,
         project: { with: { alertPolicies: true } },

@@ -64,6 +64,22 @@
             height: 0;
         }
     }
+
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    [data-slot="dialog-content"][data-state="open"],
+    [data-slot="sheet-content"][data-state="open"] {
+        scale: 1;
+        transition: scale 180ms cubic-bezier(.34, 1.56, .64, 1);
+    }
+
+    [data-slot="dialog-content"][data-state="open"][data-nudging="true"],
+    [data-slot="sheet-content"][data-state="open"][data-nudging="true"] {
+        scale: 1.025;
+        transition-duration: 90ms;
+        transition-timing-function: ease-out;
+    }
 }
 
 :root {

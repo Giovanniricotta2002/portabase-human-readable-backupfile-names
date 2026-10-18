@@ -12,9 +12,10 @@ import * as drizzleDb from "@/db";
 import {withUpdatedAt} from "@/db/utils";
 import {eq} from "drizzle-orm";
 import {db} from "@/db";
-import {createHash, createHmac, timingSafeEqual} from "crypto";
-import {env} from "@/env.mjs";
+import {createHash} from "crypto";
 import {getServerUrl} from "@/utils/get-server-url";
+import {signBackupToken} from "@/features/storages/utils/backup-url";
+import {env} from "@/env.mjs";
 import path from "path";
 import {getBackupFolderName} from "@/utils/file-prefix";
 import {resolveStoragePolicies} from "@/features/database/utils/policy-resolution";
@@ -127,20 +128,6 @@ export async function storeBackupFiles(
 
 
 
-/**
- * Signature of a backup download URL (`/api/files/backups`, served without a session):
- * HMAC with PROJECT_SECRET, which agents never hold, over the channel, the path and the expiry.
- */
-function backupUrlSignature(storageId: string, filePath: string, expires: string): string {
-    return createHmac("sha256", env.PROJECT_SECRET).update(`backups\n${storageId}\n${filePath}\n${expires}`).digest("hex");
-}
-
-export function verifyBackupUrl(storageId: string, filePath: string, expires: string, token: string): boolean {
-    const expected = Buffer.from(backupUrlSignature(storageId, filePath, expires));
-    const given = Buffer.from(token);
-    return given.length === expected.length && timingSafeEqual(given, expected) && Date.now() <= Number(expires);
-}
-
 export async function generateFileUrl(input: { data: StorageGetInput | StorageUploadInput, metadata?: StorageMetaData }): Promise<string | null> {
     const fileName = path.basename(input.data.path);
     const baseUrl = getServerUrl();
@@ -155,11 +142,12 @@ export async function generateFileUrl(input: { data: StorageGetInput | StorageUp
     });
 
     if (metadata.fileKind === "backups") {
-        const expiresAt = (Date.now() + 60 * 1000).toString();
+        const expiresAt = Date.now() + 60 * 1000;
+        const token = signBackupToken(metadata.storageId, input.data.path, expiresAt, env.PROJECT_SECRET);
 
         params.set("path", input.data.path);
-        params.set("token", backupUrlSignature(metadata.storageId, input.data.path, expiresAt));
-        params.set("expires", expiresAt);
+        params.set("token", token);
+        params.set("expires", expiresAt.toString());
         return `${baseUrl}/api/files/${metadata.fileKind}/?${params.toString()}`
     }else if (metadata.fileKind === "images") {
         return `${baseUrl}/api/files/${metadata.fileKind}/${fileName}?${params.toString()}`

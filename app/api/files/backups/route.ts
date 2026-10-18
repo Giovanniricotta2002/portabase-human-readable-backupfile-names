@@ -2,9 +2,10 @@ import {NextResponse} from "next/server";
 import path from "path";
 import type {StorageInput} from "@/features/storages/types";
 import {dispatchStorage} from "@/features/storages/utils/storages.dispatch";
-import {verifyBackupUrl} from "@/features/storages/utils/storages.helpers";
+import {verifyBackupToken} from "@/features/storages/utils/backup-url";
 import {Readable} from "node:stream";
 import {logger} from "@/lib/logger";
+import {env} from "@/env.mjs";
 
 const log = logger.child({module: "api/files/backups"});
 
@@ -24,10 +25,11 @@ export async function GET(
 
     const fileName = path.basename(pathFromUrl);
 
-    if (!token || !expires || !verifyBackupUrl(storageId, pathFromUrl, expires, token)) {
+    const check = verifyBackupToken(storageId, pathFromUrl, expires, token, env.PROJECT_SECRET);
+    if (!check.ok) {
         return NextResponse.json(
-            {error: 'Invalid or expired signed token'},
-            {status: 403}
+            {error: `Invalid signed token: ${check.reason}`},
+            {status: check.reason === "missing" ? 400 : 403}
         );
     }
 

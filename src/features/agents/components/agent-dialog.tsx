@@ -29,6 +29,8 @@ type AgentDialogProps = {
 
 export const AgentDialog = ({agent, typeTrigger, organization, adminView, organizations}: AgentDialogProps) => {
     const [open, setOpen] = useState(false);
+    const [configurationDirty, setConfigurationDirty] = useState(false);
+    const [organizationsDirty, setOrganizationsDirty] = useState(false);
     const isEdit = !!agent;
     const router = useRouter();
 
@@ -54,6 +56,7 @@ export const AgentDialog = ({agent, typeTrigger, organization, adminView, organi
             <DialogTrigger asChild>{getTrigger()}</DialogTrigger>
             <DialogContent
                 onOpenAutoFocus={(e) => e.preventDefault()}
+                preventOutsideClose={configurationDirty || organizationsDirty}
             >
                 <DialogHeader>
                     <DialogTitle>{isEdit ? `Edit ${agent.name}` : "Create new agent"}</DialogTitle>
@@ -65,8 +68,9 @@ export const AgentDialog = ({agent, typeTrigger, organization, adminView, organi
                                 <TabsTrigger value="configuration">Configuration</TabsTrigger>
                                 <TabsTrigger value="organizations">Organizations</TabsTrigger>
                             </TabsList>
-                            <TabsContent className="h-full justify-between" value="configuration">
+                            <TabsContent forceMount className="h-full justify-between data-[state=inactive]:hidden" value="configuration">
                                 <AgentForm
+                                    onDirtyChange={setConfigurationDirty}
                                     organization={organization}
                                     onSuccess={() => {
                                         setOpen(false)
@@ -76,8 +80,9 @@ export const AgentDialog = ({agent, typeTrigger, organization, adminView, organi
                                     agentId={agent?.id}
                                 />
                             </TabsContent>
-                            <TabsContent className="h-full justify-between" value="organizations">
+                            <TabsContent forceMount className="h-full justify-between data-[state=inactive]:hidden" value="organizations">
                                 <AgentOrganisationForm
+                                    onDirtyChange={setOrganizationsDirty}
                                     defaultValues={agent}
                                     organizations={organizations}
                                 />
@@ -86,6 +91,7 @@ export const AgentDialog = ({agent, typeTrigger, organization, adminView, organi
                         :
                         <>
                             <AgentForm
+                                onDirtyChange={setConfigurationDirty}
                                 organization={organization}
                                 onSuccess={() => {
                                     setOpen(false)

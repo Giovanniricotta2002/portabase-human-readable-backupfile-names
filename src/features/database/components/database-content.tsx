@@ -1,7 +1,6 @@
 "use client";
 import {DatabaseBackupActionsModal} from "@/features/database/components/backup-actions-modal";
 import {DatabaseTabs, isBackupOnly} from "@/features/database/components/database-tabs";
-import {Setting} from "@/db/schema/01_setting";
 import {DatabaseWith} from "@/db/schema/07_database";
 import {MemberWithUser} from "@/db/schema/03_organization";
 import {useBackupModal} from "@/features/database/components/backup-modal-context";
@@ -30,7 +29,6 @@ import {Alert, AlertDescription, AlertTitle} from "@/components/ui/alert";
 import {AlertCircleIcon} from "lucide-react";
 
 export type DatabaseContentProps = {
-    settings: Setting;
     isAlreadyRestore: boolean;
     database: DatabaseWith;
     activeMember: MemberWithUser;
@@ -201,7 +199,6 @@ export const DatabaseContent = (props: DatabaseContentProps) => {
                 <DatabaseBackupActionsModal dbms={database.dbms}/>
                 <DatabaseTabs
                     activeMember={props.activeMember}
-                    settings={props.settings}
                     database={database}
                     isAlreadyRestore={isAlreadyRestore}
                 />

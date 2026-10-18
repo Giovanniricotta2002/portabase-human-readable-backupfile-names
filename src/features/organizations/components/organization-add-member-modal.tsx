@@ -25,6 +25,7 @@ type OrganizationAddMemberModalProps = {
 
 export const OrganizationAddMemberModal = ({users, organization, disabled}: OrganizationAddMemberModalProps) => {
     const [open, setOpen] = useState(false);
+    const [isDirty, setIsDirty] = useState(false);
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild disabled={disabled}>
@@ -33,12 +34,13 @@ export const OrganizationAddMemberModal = ({users, organization, disabled}: Orga
                     Add member
                 </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent preventOutsideClose={isDirty}>
                 <DialogHeader>
                     <DialogTitle>Add member to your organization</DialogTitle>
                     <DialogDescription>Select a user to add to your organization</DialogDescription>
                 </DialogHeader>
                 <OrganizationAddMemberForm users={users} organization={organization}
+                                           onDirtyChange={setIsDirty}
                                            onSuccessAction={() => setOpen(!open)}/>
             </DialogContent>
         </Dialog>

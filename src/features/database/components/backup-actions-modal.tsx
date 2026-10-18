@@ -15,12 +15,14 @@ import {
     getBackupActionTextBasedOnActionKind,
     useBackupModal
 } from "@/features/database/components/backup-modal-context";
+import {useState} from "react";
 
 
 type DatabaseActionsModalProps = { dbms?: EDbmsSchema }
 
 
 export const DatabaseBackupActionsModal = ({dbms}: DatabaseActionsModalProps) => {
+    const [isDirty, setIsDirty] = useState(false);
     const {open, action, backup, closeModal} = useBackupModal();
     if (!backup || !action) return null;
     const text = getBackupActionTextBasedOnActionKind(action);
@@ -29,7 +31,7 @@ export const DatabaseBackupActionsModal = ({dbms}: DatabaseActionsModalProps) =>
 
     return (
         <Dialog open={open} onOpenChange={closeModal}>
-            <DialogContent>
+            <DialogContent preventOutsideClose={isDirty}>
                 <DialogHeader>
                     <DialogTitle>{isPresence ? text : `${text} backup ?`}</DialogTitle>
                     <DialogDescription>
@@ -48,7 +50,7 @@ export const DatabaseBackupActionsModal = ({dbms}: DatabaseActionsModalProps) =>
                 )}
                 {isPresence
                     ? <BackupPresenceDetails backup={backup}/>
-                    : <BackupActionsForm backup={backup} action={action}/>}
+                    : <BackupActionsForm backup={backup} action={action} onDirtyChange={setIsDirty}/>}
             </DialogContent>
         </Dialog>
     )

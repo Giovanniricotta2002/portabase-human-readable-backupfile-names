@@ -36,9 +36,12 @@ dotenv.config({
     path: ".env",
 });
 
-const pool = new Pool({
+const poolConfig = {
     connectionString: process.env.DATABASE_URL!,
-});
+    options: "-c TimeZone=UTC",
+};
+
+const pool = new Pool(poolConfig);
 
 export const schemas = {
     ...settings,
@@ -70,9 +73,7 @@ export const db = drizzle({
 
 export async function makeMigration() {
     if (process.env.NODE_ENV != "development") {
-        const pool = new Pool({
-            connectionString: process.env.DATABASE_URL!,
-        });
+        const pool = new Pool(poolConfig);
 
         const database = drizzle({client: pool});
 

@@ -11,16 +11,19 @@ import {AgentWith} from "@/db/schema/08_agent";
 import {AgentOrganizationSchema, AgentOrganizationType} from "@/features/agents/schemas/agent-organizations.schema";
 import {updateAgentOrganizationsAction} from "@/features/agents/actions/agent-organizations.action";
 import {getOrganizationDisplayName} from "@/features/organizations/utils/get-organization-display-name";
+import {useReportFormDirty} from "@/hooks/use-report-form-dirty";
 
 
 type AgentOrganisationFormProps = {
     organizations?: OrganizationWithMembers[];
     defaultValues?: AgentWith
+    onDirtyChange?: (dirty: boolean) => void;
 };
 
 export const AgentOrganisationForm = ({
                                           organizations,
                                           defaultValues,
+                                          onDirtyChange,
                                       }: AgentOrganisationFormProps) => {
 
     const router = useRouter();
@@ -35,6 +38,7 @@ export const AgentOrganisationForm = ({
             organizations: defaultOrganizationIds
         },
     });
+    useReportFormDirty(form, onDirtyChange);
 
     const formatOrganizationsList = (organizations: OrganizationWithMembers[]) => {
         return organizations
@@ -58,6 +62,7 @@ export const AgentOrganisationForm = ({
 
             if (inner?.success) {
                 toast.success(inner.actionSuccess?.message);
+                form.reset(form.getValues());
                 router.refresh();
             } else {
                 toast.error(inner?.actionError?.message);

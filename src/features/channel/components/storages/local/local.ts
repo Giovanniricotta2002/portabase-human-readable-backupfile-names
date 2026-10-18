@@ -11,20 +11,13 @@ import {
 } from '@/features/storages/types';
 import fs from "node:fs";
 import { generateFileUrl } from "@/features/storages/utils/storages.helpers";
+import { resolveWithin } from "@/features/storages/utils/backup-url";
 import { Readable } from "node:stream";
 import { env } from "@/env.mjs";
 
 const BASE_DIR = path.join(env.PRIVATE_PATH!, "/uploads");
 
-/** `rel` inside `base`: paths reported by agents must not escape the channel's directory. */
-function under(base: string, rel: string): string {
-  const root = path.resolve(base);
-  const full = path.resolve(path.join(base, rel));
-  if (!full.startsWith(root + path.sep)) {
-    throw new Error("Path is outside the local storage directory");
-  }
-  return full;
-}
+const PATH_ESCAPE_ERROR = "Invalid path: outside storage root";
 
 export async function uploadLocal(
   config: { baseDir?: string },
@@ -34,7 +27,10 @@ export async function uploadLocal(
     ? path.join(process.cwd(), config.baseDir ?? "")
     : BASE_DIR;
 
-  const fullPath = under(base, input.data.path);
+  const fullPath = resolveWithin(base, input.data.path);
+  if (!fullPath) {
+    return { success: false, provider: "local", error: PATH_ESCAPE_ERROR };
+  }
   const dir = path.dirname(fullPath);
 
   await mkdir(dir, { recursive: true });
@@ -90,7 +86,10 @@ export async function getLocal(
   const base = config.baseDir
     ? path.join(process.cwd(), config.baseDir ?? "")
     : BASE_DIR;
-  const filePath = under(base, input.data.path);
+  const filePath = resolveWithin(base, input.data.path);
+  if (!filePath) {
+    return { success: false, provider: "local", error: PATH_ESCAPE_ERROR };
+  }
 
   if (!fs.existsSync(filePath)) {
     return {
@@ -144,7 +143,10 @@ export async function deleteLocal(
   const base = config.baseDir
     ? path.join(process.cwd(), config.baseDir ?? "")
     : BASE_DIR;
-  const fullPath = under(base, input.data.path);
+  const fullPath = resolveWithin(base, input.data.path);
+  if (!fullPath) {
+    return { success: false, provider: "local", error: PATH_ESCAPE_ERROR };
+  }
 
   await unlink(fullPath);
   return {
@@ -160,7 +162,10 @@ export async function checkLocal(
   const base = config.baseDir
     ? path.join(process.cwd(), config.baseDir)
     : BASE_DIR;
-  const fullPath = under(base, input.data.path);
+  const fullPath = resolveWithin(base, input.data.path);
+  if (!fullPath) {
+    return { success: false, provider: "local", notFound: false, error: PATH_ESCAPE_ERROR };
+  }
   try {
     await fs.promises.stat(fullPath);
     return { success: true, provider: "local" };
@@ -199,8 +204,11 @@ export async function copyLocal(
       ? path.join(process.cwd(), config.baseDir ?? "")
       : BASE_DIR;
 
-  const sourcePath = under(base, input.data.from);
-  const destinationPath = under(base, input.data.to);
+  const sourcePath = resolveWithin(base, input.data.from);
+  const destinationPath = resolveWithin(base, input.data.to);
+  if (!sourcePath || !destinationPath) {
+    return { success: false, provider: "local", error: PATH_ESCAPE_ERROR };
+  }
 
   const dir = path.dirname(destinationPath);
   await mkdir(dir, { recursive: true });

@@ -10,17 +10,21 @@ import {toast} from "sonner";
 import {PasswordProviderSchema, PasswordProviderSchemaType} from "../schemas/provider.schema";
 import {linkPasswordProfileProviderAction} from "../actions/provider.action";
 import {PasswordInput} from "@/components/ui/password-input";
+import {useReportFormDirty} from "@/hooks/use-report-form-dirty";
 
 type SetPasswordFormProps = {
     onSuccess?: () => void;
+    onDirtyChange?: (dirty: boolean) => void;
 };
 
-export default function SetPasswordForm({onSuccess}: SetPasswordFormProps) {
+export default function SetPasswordForm({onSuccess, onDirtyChange}: SetPasswordFormProps) {
     const router = useRouter();
 
     const form = useZodForm({
         schema: PasswordProviderSchema,
+        defaultValues: {password: "", confirmPassword: ""},
     });
+    useReportFormDirty(form, onDirtyChange);
 
     const {mutateAsync: setPasswordMutation, isPending: isSettingPassword} = useMutation({
         mutationFn: async (values: PasswordProviderSchemaType) => {

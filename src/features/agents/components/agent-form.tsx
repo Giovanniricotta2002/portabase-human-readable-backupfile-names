@@ -19,11 +19,13 @@ import {AgentSchema, AgentType} from "@/features/agents/schemas/agents.schema";
 import {toast} from "sonner";
 import {createAgentAction, updateAgentAction} from "@/features/agents/actions/agents.action";
 import {OrganizationWithMembers} from "@/db/schema/03_organization";
+import {useReportFormDirty} from "@/hooks/use-report-form-dirty";
 
 export type agentFormProps = {
     defaultValues?: AgentType;
     agentId?: string;
     onSuccess?: (data: any) => void;
+    onDirtyChange?: (dirty: boolean) => void;
     organization?: OrganizationWithMembers;
 
 };
@@ -34,8 +36,9 @@ export const AgentForm = (props: agentFormProps) => {
 
     const form = useZodForm({
         schema: AgentSchema,
-        defaultValues: props.defaultValues,
+        defaultValues: props.defaultValues ?? {name: "", description: ""},
     });
+    useReportFormDirty(form, props.onDirtyChange);
 
     const router = useRouter();
 

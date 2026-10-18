@@ -16,21 +16,24 @@ import {toast} from "sonner";
 import {OrganizationWithMembers, OrganizationWithMembersAndUsers} from "@/db/schema/03_organization";
 import {User} from "@/db/schema/02_user";
 import {ButtonWithLoading} from "@/components/common/button-with-loading";
+import {useReportFormDirty} from "@/hooks/use-report-form-dirty";
 
 type OrganizationAddMemberFormProps = {
     onSuccessAction?: () => void;
+    onDirtyChange?: (dirty: boolean) => void;
     users: User[];
     organization: OrganizationWithMembersAndUsers;
 };
 
-export const OrganizationAddMemberForm = ({onSuccessAction, users, organization}: OrganizationAddMemberFormProps) => {
+export const OrganizationAddMemberForm = ({onSuccessAction, onDirtyChange, users, organization}: OrganizationAddMemberFormProps) => {
 
     const organizationMemberUserIds = organization.members.map((member) => member.user.id);
     const filteredUsers = users
         .filter((user) => !organizationMemberUserIds.includes(user.id))
         .map((user) => ({value: user.id, label: `${user.name} | ${user.email}`}));
     const router = useRouter();
-    const form = useZodForm({schema: AddMemberSchema});
+    const form = useZodForm({schema: AddMemberSchema, defaultValues: {userId: ""}});
+    useReportFormDirty(form, onDirtyChange);
 
     const mutationAddMemberOrganisation = useMutation({
         mutationFn: async (data: AddMemberSchemaType) => {
