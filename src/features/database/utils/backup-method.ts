@@ -1,7 +1,6 @@
 import type {BackupStorage} from "@/db/schema/14_storage-backup";
 import {formatBytes} from "@/utils/text";
 
-/** Files methods: wire values (ping, databases.json, config form) vs stored engines. */
 export type BackupEngine = "archive" | "restic" | "sync";
 export type WireMethod = "archive" | "snapshot" | "sync";
 
@@ -11,7 +10,6 @@ export const METHOD_LABELS: Record<BackupEngine, string> = {
     sync: "Sync",
 };
 
-/** What one run does, and how to read its Size and Changes. */
 export const METHOD_DESCRIPTIONS: Record<BackupEngine, string> = {
     archive: "Each run uploads a full tar(.gz) archive of the directory. Size is the archive size.",
     restic:
@@ -23,12 +21,10 @@ export const METHOD_DESCRIPTIONS: Record<BackupEngine, string> = {
         "from Portabase. Size is the replica size after the run.",
 };
 
-/** A sync source runs syncs, not restorable backups. */
 export const isSync = (database: {backupEngine: BackupEngine}) => database.backupEngine === "sync";
 
 export const signedBytes = (bytes: number) => `${bytes < 0 ? "−" : "+"}${formatBytes(Math.abs(bytes))}`;
 
-/** What a successful snapshot or sync run changed on one storage, or null without counters. */
 export function describeRun(storage: Pick<BackupStorage, "status" | "size" | "stats">): string | null {
     const stats = storage.stats;
     if (storage.status !== "success" || !stats) return null;
@@ -37,6 +33,9 @@ export function describeRun(storage: Pick<BackupStorage, "status" | "size" | "st
         return `${stats.filesNew} new, ${stats.filesChanged} changed, ${stats.filesUnmodified} unmodified${removed} file(s) · ${signedBytes(storage.size ?? 0)} new data`;
     }
     const delta = stats.sizeDelta == null ? "" : ` · storage ${signedBytes(stats.sizeDelta)}`;
+    if (stats.filesTransferred === 0 && stats.filesDeleted === 0) {
+        return `Replica already matches the source: nothing transferred or deleted${delta}`;
+    }
     return `${stats.filesTransferred} file(s) transferred (${formatBytes(storage.size ?? 0)}), ${stats.filesDeleted} deleted${delta}`;
 }
 
@@ -57,16 +56,11 @@ export function wireFromEngine(engine: BackupEngine): WireMethod {
     return engine === "restic" ? "snapshot" : engine;
 }
 
-/**
- * The method databases.json announces when it differs from the locked one, else null.
- * `announced` undefined (dashboard-managed source, older agent) never conflicts.
- */
 export function resolveMethodConflict(stored: BackupEngine, announced: string | undefined): string | null {
     if (announced === undefined) return null;
     return engineFromWire(announced) === stored ? null : announced;
 }
 
-/** Takes `options.method` out of a files config (the method lives in `backupEngine`). */
 export function splitMethod(config: Record<string, unknown>): {config: Record<string, unknown>; method?: string} {
     const options = config.options;
     if (!options || typeof options !== "object" || Array.isArray(options) || !("method" in options)) {
@@ -79,7 +73,6 @@ export function splitMethod(config: Record<string, unknown>): {config: Record<st
     return {config: out, method: typeof method === "string" ? method : undefined};
 }
 
-/** A files config with `options.method` set, for display in the config form. */
 export function withMethod(config: Record<string, unknown> | null | undefined, method: WireMethod): Record<string, unknown> {
     const base = config ?? {};
     const options = base.options && typeof base.options === "object" && !Array.isArray(base.options)

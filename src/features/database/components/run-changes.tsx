@@ -9,7 +9,6 @@ import {cn} from "@/lib/utils";
 
 type Item = {key: string; icon: LucideIcon; count: number; className: string; detail?: string};
 
-/** Diffstat of one snapshot or sync run: non-zero counters, then the storage size change. */
 export function RunChanges({storage}: {storage: Pick<BackupStorage, "status" | "size" | "stats">}) {
     const summary = describeRun(storage);
     const stats = storage.stats;
@@ -42,7 +41,9 @@ export function RunChanges({storage}: {storage: Pick<BackupStorage, "status" | "
                                 {detail && <span className="font-normal text-muted-foreground">{detail}</span>}
                             </span>
                         ))}
-                        {!shown.length && !hasDelta && <span className="text-muted-foreground">No changes</span>}
+                        {!shown.length && !hasDelta && (
+                            <span className="text-muted-foreground">{isSnapshot ? "No changes" : "Replica up to date"}</span>
+                        )}
                         {hasDelta && (
                             <span className="rounded-md border px-1.5 py-0.5 font-mono text-muted-foreground">
                                 {signedBytes(delta)}

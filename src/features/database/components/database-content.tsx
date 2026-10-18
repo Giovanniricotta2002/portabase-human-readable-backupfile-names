@@ -98,7 +98,7 @@ export const DatabaseContent = (props: DatabaseContentProps) => {
                 <PageTitle className="flex flex-col md:flex-row items-center justify-between w-full ">
                     <div className="flex min-w-full md:min-w-fit justify-between gap-2 items-center ">
                         {capitalizeFirstLetter(database.name)}
-                        <div className=" flex items-center justify-center">
+                        <div className="flex items-center justify-center gap-2">
                             <Badge variant="outline" className="bg-orange-400/10 border-orange-600/50 text-orange-600">
                                 {database.dbms}
                             </Badge>

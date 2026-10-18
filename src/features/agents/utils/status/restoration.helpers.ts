@@ -44,10 +44,7 @@ export async function handleFailedRestoration(restorationId: string, databaseId:
     }
 }
 
-/**
- * Restore payload for a snapshot: no signed URL, the agent reads the
- * repository itself. The channel travels encrypted, like `storages`.
- */
+
 export async function buildResticRestore(
     backupStorage: BackupStorage,
     agentVersion: string | undefined,
@@ -80,7 +77,6 @@ export async function buildResticRestore(
             },
         };
     } catch (err) {
-        // A throw here would 500 every ping and leave the restoration waiting.
         return {error: `Snapshot restore payload could not be built: ${err instanceof Error ? err.message : String(err)}`};
     }
 }
