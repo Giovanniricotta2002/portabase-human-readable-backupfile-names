@@ -27,15 +27,23 @@ export async function findFileByName(
     name: string,
     folderId: string
 ): Promise<string | null> {
-    const res = await drive.files.list({
-        q: `name='${name}' and '${folderId}' in parents and trashed=false`,
-        fields: "files(id)",
-        pageSize: 2,
-        supportsAllDrives: true,
-        includeItemsFromAllDrives: true,
-    });
+    // Drive may return fewer results than pageSize while more remain, so follow
+    // nextPageToken until a duplicate is found or the listing is exhausted.
+    const files: drive_v3.Schema$File[] = [];
+    let pageToken: string | undefined;
+    do {
+        const res = await drive.files.list({
+            q: `name='${name}' and '${folderId}' in parents and trashed=false`,
+            fields: "nextPageToken, files(id)",
+            pageSize: 2,
+            pageToken,
+            supportsAllDrives: true,
+            includeItemsFromAllDrives: true,
+        });
+        files.push(...(res.data.files ?? []));
+        pageToken = res.data.nextPageToken ?? undefined;
+    } while (pageToken && files.length < 2);
 
-    const files = res.data.files ?? [];
     if (files.length > 1) {
         throw new Error(`Multiple files named '${name}' found in the same folder`);
     }
