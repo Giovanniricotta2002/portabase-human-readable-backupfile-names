@@ -30,12 +30,17 @@ export async function findFileByName(
     const res = await drive.files.list({
         q: `name='${name}' and '${folderId}' in parents and trashed=false`,
         fields: "files(id)",
-        pageSize: 1,
+        pageSize: 2,
         supportsAllDrives: true,
         includeItemsFromAllDrives: true,
     });
 
-    return res.data.files?.[0]?.id ?? null;
+    const files = res.data.files ?? [];
+    if (files.length > 1) {
+        throw new Error(`Multiple files named '${name}' found in the same folder`);
+    }
+
+    return files[0]?.id ?? null;
 }
 
 

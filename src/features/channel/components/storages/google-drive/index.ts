@@ -31,7 +31,12 @@ export async function uploadGoogleDrive(
         ? await ensureFolderPath(client, folderPath, config.folderId)
         : config.folderId;
 
-    const existing = await findFileByName(client, fileName, folderId);
+    let existing: string | null;
+    try {
+        existing = await findFileByName(client, fileName, folderId);
+    } catch (err: any) {
+        return {success: false, provider: "google-drive", error: err.message};
+    }
     if (existing && !input.data.overwrite) return {success: false, provider: "google-drive", error: "File already exists"};
 
     let fileStream: Readable;
