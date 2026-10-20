@@ -1,5 +1,3 @@
-"use server";
-
 import { db } from "@/db";
 import { and, eq, inArray } from "drizzle-orm";
 import { member } from "@/db/schema/04_member";

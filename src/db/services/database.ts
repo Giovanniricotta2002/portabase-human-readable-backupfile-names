@@ -1,4 +1,3 @@
-"use server";
 import { db } from "@/db";
 import { DatabaseWith } from "@/db/schema/07_database";
 import { AgentWith } from "@/db/schema/08_agent";

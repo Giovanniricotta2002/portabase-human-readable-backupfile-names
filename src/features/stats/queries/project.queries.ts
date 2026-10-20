@@ -1,5 +1,3 @@
-"use server";
-
 import { db } from "@/db";
 import { count, eq, inArray, and } from "drizzle-orm";
 import { project } from "@/db/schema/06_project";

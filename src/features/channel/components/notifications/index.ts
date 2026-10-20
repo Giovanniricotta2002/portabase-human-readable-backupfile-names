@@ -1,4 +1,3 @@
-"use server"
 import type {ProviderKind, EventPayload, DispatchResult} from '@/features/notifications/types';
 import {sendSlack} from './slack';
 import {sendSmtp} from './smtp';

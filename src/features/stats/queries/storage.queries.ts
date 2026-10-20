@@ -1,5 +1,3 @@
-"use server";
-
 import { db } from "@/db";
 import { mvKpiStorageTreemap } from "@/db/schema/16_dashboard-views";
 import { backup } from "@/db/schema/07_database";

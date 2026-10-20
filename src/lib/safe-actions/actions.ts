@@ -26,6 +26,10 @@ export const userAction = action.use(async ({ next }) => {
   if (!user) {
     throw new ActionError("You must be logged in");
   }
+  // Same eligibility rule as proxy.ts: pending (unapproved) and banned accounts hold a session but no rights.
+  if (user.banned || user.role === "pending") {
+    throw new ActionError("Your account is not allowed to perform this action");
+  }
   return next({ ctx: { user } });
 });
 

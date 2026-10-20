@@ -1,4 +1,3 @@
-"use server"
 import {Backup, DatabaseWith} from "@/db/schema/07_database";
 import {dispatchStorage} from "@/features/storages/utils/storages.dispatch";
 import type {
