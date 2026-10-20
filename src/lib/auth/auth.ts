@@ -43,6 +43,7 @@ import { APIError } from "better-auth/api";
 import { getOAuthProviders } from "./oauth";
 import { logger } from "@/lib/logger";
 import { apiKey } from "@better-auth/api-key";
+import { isSystemRole } from "@/lib/acl/role";
 
 const log = logger.child({ module: "lib/auth" });
 
@@ -267,7 +268,7 @@ export const auth = betterAuth({
           roleToAssign = oidcProvider.defaultRole;
         }
 
-        if (!roleToAssign) {
+        if (!isSystemRole(roleToAssign)) {
           console.warn(
             `Access Denied for user ${usr.email}: No matching group/role found in ${providerId} config.`,
           );
@@ -441,6 +442,9 @@ export const auth = betterAuth({
     user: {
       update: {
         async before(user) {
+          if ("role" in user && !isSystemRole(user.role)) {
+            throw new APIError("BAD_REQUEST", { message: "Invalid role" });
+          }
           if (env.AUTH_EMAIL_PASSWORD_ENABLED !== "true") {
             if (user.password || user.lastChangedPasswordAt) {
               throw new APIError("FORBIDDEN", {
@@ -455,6 +459,9 @@ export const auth = betterAuth({
       },
       create: {
         async before(user) {
+          if (user.role !== undefined && !isSystemRole(user.role)) {
+            throw new APIError("BAD_REQUEST", { message: "Invalid role" });
+          }
           const userCount = (
             await db.select({ count: count() }).from(drizzleDb.schemas.user)
           )[0].count;
