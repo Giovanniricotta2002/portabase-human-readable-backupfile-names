@@ -37,7 +37,7 @@ export const PATCH = withAgentCheck(
       const backupStorageId = body.backupStorageId;
       const backupId = body.backupId;
 
-      const database = await getDatabaseOrThrow(generatedId);
+      const database = await getDatabaseOrThrow(generatedId, agent.id);
 
       const backup = await db.query.backup.findFirst({
         where: and(

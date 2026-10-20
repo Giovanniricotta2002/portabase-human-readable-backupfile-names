@@ -60,6 +60,7 @@ export async function handleDatabases(body: Body, agent: Agent, lastContact: Dat
         const existingDatabase = await dbClient.query.database.findFirst({
             where: and(
                 eq(drizzleDb.schemas.database.agentDatabaseId, db.generatedId),
+                eq(drizzleDb.schemas.database.agentId, agent.id),
                 isNull(drizzleDb.schemas.database.deletedAt),
             ),
             with: {
@@ -74,6 +75,23 @@ export async function handleDatabases(body: Body, agent: Agent, lastContact: Dat
         let backupSize: number | null = null
 
         if (!existingDatabase) {
+            const foreignDatabase = await dbClient.query.database.findFirst({
+                where: and(
+                    eq(drizzleDb.schemas.database.agentDatabaseId, db.generatedId),
+                    isNull(drizzleDb.schemas.database.deletedAt),
+                ),
+                columns: {agentId: true},
+            });
+            if (foreignDatabase) {
+                log.warn({
+                    name: "handleDatabases",
+                    agentId: agent.id,
+                    ownerAgentId: foreignDatabase.agentId,
+                    generatedId: db.generatedId
+                }, "Ignoring agent report of a database owned by another agent");
+                continue;
+            }
+
             const [tombstone] = await dbClient
                 .update(drizzleDb.schemas.database)
                 .set(withUpdatedAt({agentDatabaseId: null}))
@@ -138,12 +156,15 @@ export async function handleDatabases(body: Body, agent: Agent, lastContact: Dat
                 .update(drizzleDb.schemas.database)
                 .set(withUpdatedAt({
                     ...(isDashboardManaged ? {} : {name: db.name, dbms: db.dbms as EDbmsSchema}),
-                    agentId: agent.id,
                     lastContact: db.pingStatus ? lastContact : existingDatabase.lastContact,
                     healthErrorCount: db.pingStatus ? null : existingDatabase.healthErrorCount,
                 }))
-                .where(eq(drizzleDb.schemas.database.id, existingDatabase.id))
+                .where(and(
+                    eq(drizzleDb.schemas.database.id, existingDatabase.id),
+                    eq(drizzleDb.schemas.database.agentId, agent.id),
+                ))
                 .returning();
+            if (!databaseUpdated) continue;
 
 
             await dbClient
