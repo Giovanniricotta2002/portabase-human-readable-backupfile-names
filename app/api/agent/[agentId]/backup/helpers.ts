@@ -47,12 +47,6 @@ export function withAgentCheck(handler: Function) {
     };
 }
 
-/**
- * Returns a 401 response when the request is not proven to come from the agent, null otherwise.
- * Signed requests are verified. Unsigned requests are only accepted from legacy agents: never
- * for an agent whose stored version (written by a signed request) already signs, and never for
- * a request claiming such a version.
- */
 async function authenticateAgentRequest(request: Request, agentId: string, agent: Agent): Promise<NextResponse | null> {
     const signature = request.headers.get("x-agent-signature");
 

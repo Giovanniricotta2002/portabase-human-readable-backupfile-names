@@ -32,10 +32,7 @@ export function displayVersion(version: string | null | undefined): string {
 }
 
 /**
- * Signature of an agent request. The key is derived from the master key and
- * the agent id, the signed payload binds method, path, timestamp and body:
- * hex( HMAC(HMAC(masterKey, "portabase-agent-auth:v1:" + agentId),
- *           METHOD \n PATH \n TIMESTAMP \n hex(sha256(body))) ).
+ * Signature of an agent request. The key is derived from the master key
  */
 export function signAgentRequest(
   masterKey: Buffer,
