@@ -2,7 +2,8 @@ import crypto from "node:crypto";
 
 /**
  * Minimum agent version (its own CARGO_PKG_VERSION) that understands the
- * encrypted storages envelope. Older agents receive legacy plaintext.
+ * encrypted storages envelope. Older agents receive no storages (never sent
+ * in plaintext).
  */
 export const MIN_AGENT_VERSION_STORAGE_ENC = "1.17.0";
 
