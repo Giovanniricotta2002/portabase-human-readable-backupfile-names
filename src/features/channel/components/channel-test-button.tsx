@@ -6,16 +6,11 @@ import {toast} from "sonner";
 
 import {Button} from "@/components/ui/button";
 import {NotificationChannel} from "@/db/schema/09_notification-channel";
-import {testNotificationChannelAction} from "@/features/channel/components/notifications/channel.action";
-import {testStorageChannelAction} from "@/features/channel/components/storages/channel.action";
 import {useIsMobile} from "@/hooks/use-mobile";
 import {cn} from "@/lib/utils";
 import {StorageChannel} from "@/db/schema/12_storage-channel";
 import {ChannelKind} from "@/features/channel/components/channels-helpers";
-import type {
-    NotificationChannelFormType,
-    StorageChannelFormType
-} from "@/features/channel/schemas/channel-form.schema";
+import {testChannelAction} from "@/features/channel/components/channel-test.action";
 import {Tooltip, TooltipContent, TooltipTrigger} from "@/components/ui/tooltip";
 
 
@@ -36,31 +31,22 @@ export const ChannelTestButton = ({channel, organizationId, kind}: NotifierTestC
 
     const mutation = useMutation({
         mutationFn: async () => {
-            if (kind === "notification") {
-                const result = (await testNotificationChannelAction({
-                    organizationId,
-                    data: channel as unknown as NotificationChannelFormType,
-                }))?.data;
+            const response = await testChannelAction({kind, organizationId, channel});
+            const result = response?.data ?? {success: false, message: undefined, response: response?.serverError};
 
-                if (result?.success) {
+            if (kind === "notification") {
+                if (result.success) {
                     toast.success(result.message);
                 } else {
                     toast.error("An error occurred while testing the notification channel, check your configuration");
                 }
-            } else if (kind === "storage") {
-                const result = (await testStorageChannelAction({
-                    organizationId,
-                    data: channel as unknown as StorageChannelFormType,
-                }))?.data;
-
-                if (result?.success) {
+            } else {
+                if (result.success) {
                     toast.success("Successfully connected to storage channel");
                 } else {
-                    const responseText = result?.response ? `(${result.response})` : "";
+                    const responseText = result.response ? `(${result.response})` : "";
                     toast.error(`An error occurred while testing the storage channel, check your configuration ${responseText}`);
                 }
-            } else {
-                toast.error("Not yet supported");
             }
 
         },

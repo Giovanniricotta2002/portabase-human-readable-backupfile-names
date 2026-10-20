@@ -90,7 +90,7 @@ export const PATCH = withAgentCheck(
       const backupStorageId = body.backupStorageId;
       const backupId = body.backupId;
 
-      const database = await getDatabaseOrThrow(generatedId);
+      const database = await getDatabaseOrThrow(generatedId, agent.id);
 
       // A snapshot path is later passed to restic (forget, restore payload): only a full id.
       if (database.backupEngine === "restic" && filePath && !isSnapshotId(filePath)) {

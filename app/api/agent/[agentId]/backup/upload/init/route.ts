@@ -43,7 +43,7 @@ export const POST = withAgentCheck(
         );
       }
 
-      const database = await getDatabaseOrThrow(generatedId);
+      const database = await getDatabaseOrThrow(generatedId, agent.id);
 
       // The method is locked on the source: refuse any other engine, even from a buggy agent.
       // Agents older than P2 send no engine: archive.

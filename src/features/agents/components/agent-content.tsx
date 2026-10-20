@@ -6,8 +6,6 @@ import {formatDateLastContact} from "@/utils/date-formatting";
 import {AgentCardKey} from "@/features/agents/components/agent-card-key";
 import {AgentWithDatabases} from "@/db/schema/08_agent";
 import {useQuery} from "@tanstack/react-query";
-import {useRouter} from "next/navigation";
-import {useEffect, useRef} from "react";
 import {getAgentAction} from "@/features/agents/actions/agents.action";
 import {AgentOverrideUrlForm} from "@/features/agents/components/agent-override-url-form";
 import {
@@ -63,22 +61,6 @@ export const AgentContentPage = ({edgeKey, agent: initialAgent, canDeleteDatabas
     const agentHealthLogs: HealthcheckLog[] = data?.health ?? [];
     const supportsDatabaseConfig = agentSupportsDatabaseConfig(agent.version);
     const unsupportedVersionHint = `Requires agent version ${MIN_DATABASE_CONFIG_AGENT_VERSION} or newer.`;
-
-    // The edge key is built server-side (master key never reaches the client). When the polled
-    // overrideUrl diverges from the one the server rendered, ask Next to re-render the page so
-    // the `edgeKey` prop is rebuilt for the new URL.
-    const router = useRouter();
-    const refreshedFor = useRef<string | null>(initialAgent.overrideUrl ?? null);
-    const currentOverrideUrl = agent.overrideUrl ?? null;
-    useEffect(() => {
-        if (
-            currentOverrideUrl !== (initialAgent.overrideUrl ?? null) &&
-            refreshedFor.current !== currentOverrideUrl
-        ) {
-            refreshedFor.current = currentOverrideUrl;
-            router.refresh();
-        }
-    }, [currentOverrideUrl, initialAgent.overrideUrl, router]);
 
     return (
         <div className="space-y-10">

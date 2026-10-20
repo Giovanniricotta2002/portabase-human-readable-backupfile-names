@@ -71,21 +71,14 @@ export const EmailForm = (props: EmailFormProps) => {
                 return;
             }
 
-            const result = await sendTestEmailAction({to: props.defaultValues.smtpUser});
-
+            const result = await sendTestEmailAction();
             if (result?.serverError) {
-                toast.error(`Email sending failed: ${result.serverError}`);
-                return;
-            }
-            if (result?.validationErrors) {
-                toast.error("Email sending failed: invalid recipient address");
+                toast.error(result.serverError);
                 return;
             }
             if (result?.data?.sent) {
                 toast.success("Test Email successfully sent!");
             }
-
-            return result?.data;
         },
     });
 

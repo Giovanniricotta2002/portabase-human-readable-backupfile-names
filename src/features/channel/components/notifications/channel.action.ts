@@ -11,8 +11,6 @@ import { db } from "@/db";
 import { and, eq } from "drizzle-orm";
 import { withUpdatedAt } from "@/db/utils";
 import { NotificationChannelFormSchema } from "@/features/channel/schemas/channel-form.schema";
-import { dispatchNotification } from "@/features/notifications/utils/notifications.dispatch";
-import type { EventPayload } from "@/features/notifications/types";
 
 /** Instance channels: instance admins; organization channels: that organization's owners/admins. */
 async function authorizeChannel(user: User, id: string) {
@@ -217,21 +215,3 @@ export const updateNotificationChannelAction = userAction
       }
     },
   );
-
-export const testNotificationChannelAction = userAction
-  .inputSchema(
-    z.object({
-      organizationId: z.string().optional(),
-      data: NotificationChannelFormSchema,
-    }),
-  )
-  .action(async ({ parsedInput, ctx }) => {
-    const { organizationId, data } = parsedInput;
-    await assertCanManageOrganization(ctx.user, organizationId);
-    const payload: EventPayload = {
-      title: "Test Channel",
-      message: `We are testing channel ${data.name}`,
-      level: "info",
-    };
-    return dispatchNotification(payload, undefined, undefined, organizationId, data);
-  });

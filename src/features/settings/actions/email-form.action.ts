@@ -4,8 +4,10 @@ import { EmailFormSchema } from "@/features/settings/schemas/email-form.schema";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as drizzleDb from "@/db";
-import {ActionError, superAdminAction, systemAdminAction} from "@/lib/safe-actions/actions";
+import {ActionError, systemAdminAction, userAction} from "@/lib/safe-actions/actions";
 import {withUpdatedAt} from "@/db/utils";
+import {computeSystemPermissions} from "@/lib/acl/system-acl";
+import {getSettings} from "@/db/services/setting";
 import {sendEmail} from "@/lib/email";
 import {render} from "@react-email/components";
 import EmailSettingsTest from "@/components/emails/email-settings-test";
@@ -33,19 +35,25 @@ export const updateEmailSettingsAction = systemAdminAction
         };
     });
 
-export const sendTestEmailAction = superAdminAction
-    .inputSchema(z.object({to: z.string().email()}))
-    .action(async ({parsedInput}) => {
-        try {
-            const info = await sendEmail({
-                to: parsedInput.to,
-                subject: "Portabase",
-                html: await render(EmailSettingsTest(), {}),
-            });
-            return {sent: !!info?.response};
-        } catch (error) {
-            throw new ActionError(
-                error instanceof Error ? error.message : "Unknown error while sending test email",
-            );
-        }
-    });
+export const sendTestEmailAction = userAction.action(async ({ ctx }) => {
+    const { isAdmin, isSuperAdmin } = computeSystemPermissions(ctx.user);
+    if (!isAdmin && !isSuperAdmin) {
+        throw new ActionError("You are not allowed to perform this action");
+    }
+
+    const settings = await getSettings();
+    if (!settings?.smtpUser || !settings?.smtpFrom) {
+        throw new ActionError("SMTP is not configured");
+    }
+
+    try {
+        const email = await sendEmail({
+            to: settings.smtpUser,
+            subject: "Portabase",
+            html: await render(EmailSettingsTest(), {}),
+        });
+        return { sent: !!email?.response };
+    } catch (error: unknown) {
+        throw new ActionError(`Email sending failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+});

@@ -11,7 +11,6 @@ import { and, eq } from "drizzle-orm";
 import { withUpdatedAt } from "@/db/utils";
 import { StorageChannelFormSchema } from "@/features/channel/schemas/channel-form.schema";
 import { StorageChannel } from "@/db/schema/12_storage-channel";
-import { dispatchStorage } from "@/features/storages/utils/storages.dispatch";
 
 /** Instance channels: instance admins; organization channels: that organization's owners/admins. */
 async function authorizeChannel(user: User, id: string) {
@@ -202,15 +201,3 @@ export const updateStorageChannelAction = userAction
       }
     },
   );
-
-export const testStorageChannelAction = userAction
-  .inputSchema(
-    z.object({
-      organizationId: z.string().optional(),
-      data: StorageChannelFormSchema,
-    }),
-  )
-  .action(async ({ parsedInput, ctx }) => {
-    await assertCanManageOrganization(ctx.user, parsedInput.organizationId);
-    return dispatchStorage({ action: "ping" }, undefined, undefined, parsedInput.data);
-  });
