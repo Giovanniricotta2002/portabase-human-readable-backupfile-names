@@ -27,7 +27,7 @@ export async function handleDatabases(body: Body, agent: Agent, lastContact: Dat
     try {
         masterKey = await getMasterServerKeyContent();
     } catch {
-        log.error({name: "handleDatabases"}, "Master key unavailable; storages will be sent in plaintext");
+        log.error({name: "handleDatabases"}, "Master key unavailable; storages withheld");
     }
 
     const formatDatabase = (database: DatabaseWith, backupAction: boolean, restoreAction: boolean, UrlBackup: string | null, storages: PingDatabaseStorageChannels[], urlMeta: string | null, backupSize: number | null, cron: string | null) => {

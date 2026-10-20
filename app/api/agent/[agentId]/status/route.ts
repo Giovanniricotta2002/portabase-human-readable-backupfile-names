@@ -3,41 +3,20 @@ import { handleDatabases } from "@/features/agents/utils/status/status.helpers";
 import { Body } from "@/features/agents/types";
 import * as drizzleDb from "@/db";
 import { db } from "@/db";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { withUpdatedAt } from "@/db/utils";
 import { logger } from "@/lib/logger";
-import { isUUID } from "@/utils/text";
+import { Agent } from "@/db/schema/08_agent";
+import { withAgentCheck } from "../backup/helpers";
 
 const log = logger.child({ module: "api/agent/status/route" });
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ agentId: string }> },
-) {
+async function postStatus(request: Request, { agent }: { agent: Agent }) {
   try {
-    const agentId = (await params).agentId;
+    const agentId = agent.id;
     log.debug(`Agent ID: ${agentId}`);
     const body: Body = await request.json();
     const lastContact = new Date();
-
-    if (!isUUID(agentId)) {
-      log.error({ error: "agentId is not a valid uuid" }, "An error occurred");
-      return NextResponse.json(
-        { error: "agentId is not a valid uuid" },
-        { status: 500 },
-      );
-    }
-
-    const agent = await db.query.agent.findFirst({
-      where: and(
-        eq(drizzleDb.schemas.agent.id, agentId),
-        eq(drizzleDb.schemas.agent.isArchived, false),
-      ),
-    });
-
-    if (!agent) {
-      return NextResponse.json({ error: "Agent not found" }, { status: 404 });
-    }
 
     const [settings] = await db
       .select()
@@ -90,3 +69,5 @@ export async function POST(
     );
   }
 }
+
+export const POST = withAgentCheck(postStatus);
