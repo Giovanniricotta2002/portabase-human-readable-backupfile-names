@@ -44,6 +44,7 @@ import { getOAuthProviders } from "./oauth";
 import { logger } from "@/lib/logger";
 import { apiKey } from "@better-auth/api-key";
 import { isSystemRole } from "@/lib/acl/role";
+import { hasUsers } from "@/db/services/user";
 
 const log = logger.child({ module: "lib/auth" });
 
@@ -310,15 +311,14 @@ export const auth = betterAuth({
               : "localhost",
             registration: {
               requireSession: false,
+              // Only reached without a session (the plugin resolves logged-in callers itself).
+              // A sessionless context may only bootstrap the first account, never bind an existing one.
               resolveUser: async ({ ctx, context }) => {
-                const session = (ctx as any).context?.session;
-                if (session?.user?.id) {
-                  return {
-                    id: session.user.id,
-                    name: session.user.name || session.user.email,
-                    displayName: session.user.email,
-                  };
-                }
+                if (await hasUsers())
+                  throw new APIError("FORBIDDEN", {
+                    message:
+                      "Passkey registration requires an authenticated session",
+                  });
                 if (!context)
                   throw new APIError("BAD_REQUEST", {
                     message: "Passkey context required",
@@ -328,18 +328,6 @@ export const auth = betterAuth({
                   throw new APIError("BAD_REQUEST", {
                     message: "Invalid passkey context",
                   });
-                const [existing] = await db
-                  .select()
-                  .from(drizzleDb.schemas.user)
-                  .where(eq(drizzleDb.schemas.user.email, payload.email))
-                  .limit(1);
-                if (existing) {
-                  return {
-                    id: existing.id,
-                    name: existing.name || payload.name,
-                    displayName: payload.email,
-                  };
-                }
                 const newUser = await (
                   ctx as any
                 ).context.internalAdapter.createUser({
