@@ -18,6 +18,7 @@ import {
     useDropzone,
     Dropzone,
 } from "@/components/ui/dropzone";
+import {formatBytes} from "@/utils/text";
 
 type DropZoneFileProps = {
     onFileDropAction?: (file: File) => Promise<void> | void;
@@ -113,7 +114,7 @@ export const DropZoneFile = ({
                                                 <span>{file.fileName}</span>
                                             </div>
                                             <p className="text-xs text-muted-foreground">
-                                                {(file.file.size / (1024 * 1024)).toFixed(2)} MB
+                                                {formatBytes(file.file.size)}
                                             </p>
                                         </div>
                                     </div>
