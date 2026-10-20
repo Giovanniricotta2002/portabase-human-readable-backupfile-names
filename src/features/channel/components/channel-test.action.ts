@@ -35,8 +35,6 @@ export const testChannelAction = userAction
                 throw new ActionError("You are not allowed to perform this action");
             }
         }
-
-        // Only a fixed test message / ping: callers cannot pick a stored channel, policy or storage operation.
         const result: { success: boolean; message?: string; response?: unknown } = kind === "notification"
             ? await dispatchNotification(
                 {title: "Test Channel", message: `We are testing channel ${channel.name}`, level: "info"},
