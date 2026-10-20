@@ -1,4 +1,4 @@
-"use server"
+import "server-only";
 import {Backup, DatabaseWith} from "@/db/schema/07_database";
 import {dispatchStorage} from "@/features/storages/utils/storages.dispatch";
 import type {
@@ -60,7 +60,10 @@ export async function storeBackupFiles(
         return [];
     }
 
-    const path = `${getBackupFolderName()}/${database.project?.slug}/${fileName}`;
+    // `<folder>/restic` and `<folder>/sync` are served to agents (spec B): keep imports out of them.
+    const slug = database.project?.slug;
+    const projectDir = slug === "sync" || slug === "restic" ? `project-${slug}` : slug;
+    const path = `${getBackupFolderName()}/${projectDir}/${fileName}`;
     const size = file.length;
     const checksum = computeChecksum(file);
 
@@ -140,7 +143,7 @@ export async function generateFileUrl(input: { data: StorageGetInput | StorageUp
 
     if (metadata.fileKind === "backups") {
         const expiresAt = Date.now() + 60 * 1000;
-        const token = signBackupToken(fileName, expiresAt, env.PROJECT_SECRET);
+        const token = signBackupToken(metadata.storageId, input.data.path, expiresAt, env.PROJECT_SECRET);
 
         params.set("path", input.data.path);
         params.set("token", token);

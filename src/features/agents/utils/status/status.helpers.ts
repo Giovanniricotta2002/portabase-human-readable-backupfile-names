@@ -17,6 +17,7 @@ import {applyConfigEncryption} from "./config-encryption.helpers";
 import {isAgentVersionAtLeast, MIN_AGENT_VERSION_DB_CONFIG} from "@/utils/status-crypto";
 import {prepareRestoration} from "./restoration.helpers";
 import {resolveBackupCron} from "@/features/database/utils/policy-resolution";
+import {engineFromWire, resolveMethodConflict} from "@/features/database/utils/backup-method";
 
 const log = logger.child({module: "api/agent/status/helpers"});
 
@@ -27,7 +28,7 @@ export async function handleDatabases(body: Body, agent: Agent, lastContact: Dat
     try {
         masterKey = await getMasterServerKeyContent();
     } catch {
-        log.error({name: "handleDatabases"}, "Master key unavailable; storages will be sent in plaintext");
+        log.error({name: "handleDatabases"}, "Master key unavailable; storages withheld");
     }
 
     const formatDatabase = (database: DatabaseWith, backupAction: boolean, restoreAction: boolean, UrlBackup: string | null, storages: PingDatabaseStorageChannels[], urlMeta: string | null, backupSize: number | null, cron: string | null) => {
@@ -48,7 +49,7 @@ export async function handleDatabases(body: Body, agent: Agent, lastContact: Dat
             storages: storages,
             encrypt: settings.encryption,
             data: {
-                backup: {action: backupAction, cron},
+                backup: {action: backupAction, cron, engine: database.backupEngine},
                 restore: {action: restoreAction, file: UrlBackup, metaFile: urlMeta, size: backupSize},
             },
             config,
@@ -60,6 +61,7 @@ export async function handleDatabases(body: Body, agent: Agent, lastContact: Dat
         const existingDatabase = await dbClient.query.database.findFirst({
             where: and(
                 eq(drizzleDb.schemas.database.agentDatabaseId, db.generatedId),
+                eq(drizzleDb.schemas.database.agentId, agent.id),
                 isNull(drizzleDb.schemas.database.deletedAt),
             ),
             with: {
@@ -72,8 +74,26 @@ export async function handleDatabases(body: Body, agent: Agent, lastContact: Dat
         let urlBackup: string | null = null;
         let urlMeta: string | null = null
         let backupSize: number | null = null
+        let resticRestore: Record<string, unknown> | null = null
 
         if (!existingDatabase) {
+            const foreignDatabase = await dbClient.query.database.findFirst({
+                where: and(
+                    eq(drizzleDb.schemas.database.agentDatabaseId, db.generatedId),
+                    isNull(drizzleDb.schemas.database.deletedAt),
+                ),
+                columns: {agentId: true},
+            });
+            if (foreignDatabase) {
+                log.warn({
+                    name: "handleDatabases",
+                    agentId: agent.id,
+                    ownerAgentId: foreignDatabase.agentId,
+                    generatedId: db.generatedId
+                }, "Ignoring agent report of a database owned by another agent");
+                continue;
+            }
+
             const [tombstone] = await dbClient
                 .update(drizzleDb.schemas.database)
                 .set(withUpdatedAt({agentDatabaseId: null}))
@@ -109,7 +129,8 @@ export async function handleDatabases(body: Body, agent: Agent, lastContact: Dat
                     dbms: db.dbms as EDbmsSchema,
                     agentDatabaseId: db.generatedId,
                     lastContact: db.pingStatus ? lastContact : null,
-                    healthErrorCount: null
+                    healthErrorCount: null,
+                    backupEngine: db.dbms === "files" ? (engineFromWire(db.method) ?? "archive") : "archive",
                 })
                 .returning();
 
@@ -131,6 +152,14 @@ export async function handleDatabases(body: Body, agent: Agent, lastContact: Dat
                 databasesResponse.push(entry);
             }
         } else {
+            // Non-files sources implicitly announce "archive": a files source turned into another dbms conflicts too.
+            const methodConflict = resolveMethodConflict(
+                existingDatabase.backupEngine,
+                db.dbms === "files" ? db.method : "archive",
+            );
+            if (methodConflict !== existingDatabase.methodConflict) {
+                log.warn({name: "handleDatabases", databaseId: existingDatabase.id, announced: methodConflict, stored: existingDatabase.backupEngine}, "backup method conflict changed");
+            }
 
             const isDashboardManaged = existingDatabase.config != null;
 
@@ -138,12 +167,16 @@ export async function handleDatabases(body: Body, agent: Agent, lastContact: Dat
                 .update(drizzleDb.schemas.database)
                 .set(withUpdatedAt({
                     ...(isDashboardManaged ? {} : {name: db.name, dbms: db.dbms as EDbmsSchema}),
-                    agentId: agent.id,
                     lastContact: db.pingStatus ? lastContact : existingDatabase.lastContact,
                     healthErrorCount: db.pingStatus ? null : existingDatabase.healthErrorCount,
+                    methodConflict,
                 }))
-                .where(eq(drizzleDb.schemas.database.id, existingDatabase.id))
+                .where(and(
+                    eq(drizzleDb.schemas.database.id, existingDatabase.id),
+                    eq(drizzleDb.schemas.database.agentId, agent.id),
+                ))
                 .returning();
+            if (!databaseUpdated) continue;
 
 
             await dbClient
@@ -175,7 +208,7 @@ export async function handleDatabases(body: Body, agent: Agent, lastContact: Dat
                 ]
             })
 
-            if (activeBackup && activeBackup.status === "waiting") {
+            if (activeBackup && activeBackup.status === "waiting" && !methodConflict) {
                 backupAction = true
 
                 await dbClient
@@ -184,19 +217,21 @@ export async function handleDatabases(body: Body, agent: Agent, lastContact: Dat
                     .where(eq(drizzleDb.schemas.backup.id, activeBackup.id));
             }
 
-            const restore = await prepareRestoration(databaseUpdated.id);
+            const restore = await prepareRestoration(databaseUpdated.id, body.version, masterKey);
             if (restore) {
                 restoreAction = true
                 urlBackup = restore.file
                 urlMeta = restore.metaFile
                 backupSize = restore.size
+                resticRestore = restore.restic
             }
             const resolvedCron = resolveBackupCron({
                 ...databaseUpdated,
                 project: existingDatabase.project,
             } as DatabaseWith);
             const storages = await getDatabaseStorageChannels(databaseUpdated.id)
-            const entry = formatDatabase(databaseUpdated, backupAction, restoreAction, urlBackup, storages, urlMeta, backupSize, resolvedCron);
+            const entry = formatDatabase(databaseUpdated, backupAction, restoreAction, urlBackup, storages, urlMeta, backupSize, methodConflict ? null : resolvedCron);
+            if (resticRestore) Object.assign(entry.data.restore, resticRestore);
             applyStorageEncryption(entry, body.version, masterKey, agent.id);
             applyConfigEncryption(entry, body.version, masterKey, agent.id);
             databasesResponse.push(entry);

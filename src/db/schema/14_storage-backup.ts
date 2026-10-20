@@ -4,12 +4,14 @@ import {
   text,
   pgEnum,
   bigint,
+  jsonb,
   index,
   timestamp,
 } from "drizzle-orm/pg-core";
 import { timestamps } from "@/db/schema/00_common";
 import { StorageChannel, storageChannel } from "@/db/schema/12_storage-channel";
 import { backup } from "@/db/schema/07_database";
+import { backupEngineEnum } from "@/db/schema/types";
 import { relations, sql } from "drizzle-orm";
 import { createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -26,6 +28,26 @@ export const backupPresenceEnum = pgEnum("backup_presence", [
   "unknown",
 ]);
 
+const count = z.number().int().nonnegative();
+// What one restic snapshot changed (`size` = new data; pack headers, index and snapshot files excluded).
+export const snapshotStatsSchema = z.object({
+  filesNew: count,
+  filesChanged: count,
+  filesUnmodified: count,
+  // Files of the parent snapshot this one no longer has (null when unknown; absent before it was reported).
+  filesRemoved: count.nullable().optional(),
+});
+// What one sync run changed (`size` = bytes transferred). replicaBytes is null when the
+// agent could not measure it; sizeDelta is set by the dashboard from the previous run.
+export const syncStatsSchema = z.object({
+  filesTransferred: count,
+  filesDeleted: count,
+  replicaBytes: count.nullable(),
+  sizeDelta: z.number().int().nullable().optional(),
+});
+export type SnapshotStats = z.infer<typeof snapshotStatsSchema>;
+export type SyncStats = z.infer<typeof syncStatsSchema>;
+
 export const backupStorage = pgTable(
   "backup_storage",
   {
@@ -40,6 +62,10 @@ export const backupStorage = pgTable(
     path: text("path"),
     size: bigint("size", { mode: "number" }),
     checksum: text("checksum"),
+    // archive: `path` is a file; restic: `path` is a snapshot id (P2); sync: `path` is the replica directory.
+    engine: backupEngineEnum("engine").notNull().default("archive"),
+    // restic and sync: what the run changed.
+    stats: jsonb("stats").$type<SnapshotStats | SyncStats>(),
     presence: backupPresenceEnum("presence").notNull().default("unknown"),
     lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
     lastCheckError: text("last_check_error"),
@@ -66,7 +92,9 @@ export const backupStorageRelations = relations(backupStorage, ({ one }) => ({
   }),
 }));
 
-export const backupStorageSchema = createSelectSchema(backupStorage);
+export const backupStorageSchema = createSelectSchema(backupStorage, {
+  stats: z.union([snapshotStatsSchema, syncStatsSchema]).nullable(),
+});
 export type BackupStorage = z.infer<typeof backupStorageSchema>;
 
 export type BackupStorageWith = BackupStorage & {

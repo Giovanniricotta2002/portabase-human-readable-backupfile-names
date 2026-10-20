@@ -1,4 +1,4 @@
-import type {SystemRole} from "@/lib/acl/role";
+import {isSystemRole, type SystemRole} from "@/lib/acl/role";
 import {User} from "@/db/schema/02_user";
 
 export type SystemPermissions = {
@@ -30,7 +30,8 @@ export const computeSystemPermissions = (
     user: User | null,
 ): SystemPermissions => {
 
-    const role = (user?.role as SystemRole) ?? null;
+    const storedRole = user?.role;
+    const role = isSystemRole(storedRole) ? storedRole : null;
 
     const isSuperAdmin = role === "superadmin";
     const isAdmin = role === "admin";

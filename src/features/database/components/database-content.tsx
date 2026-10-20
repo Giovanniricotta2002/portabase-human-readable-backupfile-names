@@ -1,6 +1,6 @@
 "use client";
 import {DatabaseBackupActionsModal} from "@/features/database/components/backup-actions-modal";
-import {DatabaseTabs, backupOnly} from "@/features/database/components/database-tabs";
+import {DatabaseTabs, isBackupOnly} from "@/features/database/components/database-tabs";
 import {DatabaseWith} from "@/db/schema/07_database";
 import {MemberWithUser} from "@/db/schema/03_organization";
 import {useBackupModal} from "@/features/database/components/backup-modal-context";
@@ -24,6 +24,9 @@ import {HealthcheckLog} from "@/db/schema/15_healthcheck-log";
 import {Badge} from "@/components/ui/badge";
 import {LogsModal} from "@/features/logs/components/logs-modal";
 import {InfoTooltip} from "@/features/stats/components/info-tooltip";
+import {METHOD_DESCRIPTIONS, METHOD_LABELS, isSync} from "@/features/database/utils/backup-method";
+import {Alert, AlertDescription, AlertTitle} from "@/components/ui/alert";
+import {AlertCircleIcon} from "lucide-react";
 
 export type DatabaseContentProps = {
     isAlreadyRestore: boolean;
@@ -95,10 +98,20 @@ export const DatabaseContent = (props: DatabaseContentProps) => {
                 <PageTitle className="flex flex-col md:flex-row items-center justify-between w-full ">
                     <div className="flex min-w-full md:min-w-fit justify-between gap-2 items-center ">
                         {capitalizeFirstLetter(database.name)}
-                        <div className=" flex items-center justify-center">
+                        <div className="flex items-center justify-center gap-2">
                             <Badge variant="outline" className="bg-orange-400/10 border-orange-600/50 text-orange-600">
                                 {database.dbms}
                             </Badge>
+                            {database.dbms === "files" && (
+                                <>
+                                    <Badge variant="outline">
+                                        {METHOD_LABELS[database.backupEngine]}
+                                    </Badge>
+                                    <InfoTooltip
+                                        content={`${METHOD_DESCRIPTIONS[database.backupEngine]} Set at creation.`}
+                                    />
+                                </>
+                            )}
                         </div>
                     </div>
                     {!isMember && (
@@ -123,7 +136,7 @@ export const DatabaseContent = (props: DatabaseContentProps) => {
                                     channels={activeOrganizationChannels}
                                     organizationId={props.organizationId}
                                     queryKey={["database-data", database.id]}
-                                    isBackupOnly={backupOnly.some((t) => database.dbms === t)}
+                                    isBackupOnly={isBackupOnly(database)}
                                 />
                                 <ChannelPoliciesModal
                                     scope={{type: "database", id: database.id}}
@@ -134,7 +147,7 @@ export const DatabaseContent = (props: DatabaseContentProps) => {
                                     organizationId={props.organizationId}
                                     queryKey={["database-data", database.id]}
                                 />
-                                {database.dbms != "docker-volume" && (
+                                {database.dbms !== "docker-volume" && database.dbms !== "files" && (
                                     <ImportModal database={database}/>
                                 )}
                                 <HealthModal database={database} healthLogs={data?.health ?? []}/>
@@ -148,14 +161,26 @@ export const DatabaseContent = (props: DatabaseContentProps) => {
 
                             <div className="flex items-center gap-2">
                                 <BackupButton
-                                    disable={isAlreadyBackup || !database.lastContact}
+                                    disable={isAlreadyBackup || !database.lastContact || !!database.methodConflict}
                                     databaseId={database.id}
+                                    isSync={isSync(database)}
                                 />
                             </div>
                         </div>
                     )}
                 </PageTitle>
             </div>
+
+            {database.methodConflict && (
+                <Alert variant="destructive" className="mt-4">
+                    <AlertCircleIcon/>
+                    <AlertTitle>Backups suspended</AlertTitle>
+                    <AlertDescription>
+                        databases.json announces &quot;{database.methodConflict}&quot;, this source uses{" "}
+                        {METHOD_LABELS[database.backupEngine]}. Fix the file, or create a new source to change method.
+                    </AlertDescription>
+                </Alert>
+            )}
 
             {database.description && (
                 <PageDescription className="mt-5 sm:mt-0">
@@ -171,7 +196,7 @@ export const DatabaseContent = (props: DatabaseContentProps) => {
                     totalBackups={stats.totalBackups}
                 />
                 <LogsModal/>
-                <DatabaseBackupActionsModal/>
+                <DatabaseBackupActionsModal dbms={database.dbms}/>
                 <DatabaseTabs
                     activeMember={props.activeMember}
                     database={database}

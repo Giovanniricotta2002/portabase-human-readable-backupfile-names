@@ -18,6 +18,7 @@ import {
     AccordionTrigger,
 } from "@/components/ui/accordion";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -33,6 +34,7 @@ type OverrideUrlType = z.infer<typeof OverrideUrlSchema>;
 
 export const AgentOverrideUrlForm = ({ agent }: { agent: AgentWithDatabases }) => {
     const queryClient = useQueryClient();
+    const router = useRouter();
     const serverUrl = getServerUrl();
     const [open, setOpen] = useState("");
 
@@ -66,6 +68,8 @@ export const AgentOverrideUrlForm = ({ agent }: { agent: AgentWithDatabases }) =
             toast.success("Server URL updated");
             form.reset({ overrideUrl: overrideUrl ?? serverUrl });
             queryClient.invalidateQueries({ queryKey: ["agent-data", agent.id] });
+            // Edge key embeds the server URL; the page recomputes it server-side.
+            router.refresh();
         },
     });
 

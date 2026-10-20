@@ -7,6 +7,8 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import {Separator} from "@/components/ui/separator";
+import {Alert, AlertDescription, AlertTitle} from "@/components/ui/alert";
+import {EDbmsSchema} from "@/db/schema/types";
 import {BackupActionsForm} from "@/features/database/components/backup-actions-form";
 import {BackupPresenceDetails} from "@/features/database/components/backup-presence-details";
 import {
@@ -16,10 +18,10 @@ import {
 import {useState} from "react";
 
 
-type DatabaseActionsModalProps = {}
+type DatabaseActionsModalProps = { dbms?: EDbmsSchema }
 
 
-export const DatabaseBackupActionsModal = ({}: DatabaseActionsModalProps) => {
+export const DatabaseBackupActionsModal = ({dbms}: DatabaseActionsModalProps) => {
     const [isDirty, setIsDirty] = useState(false);
     const {open, action, backup, closeModal} = useBackupModal();
     if (!backup || !action) return null;
@@ -37,6 +39,15 @@ export const DatabaseBackupActionsModal = ({}: DatabaseActionsModalProps) => {
                     </DialogDescription>
                     <Separator className="mt-3 mb-3"/>
                 </DialogHeader>
+                {action === "restore" && dbms === "files" && (
+                    <Alert>
+                        <AlertTitle>Mirror restore</AlertTitle>
+                        <AlertDescription>
+                            The directory will be returned to this backup&apos;s state. Files created since will be
+                            deleted, except excluded paths.
+                        </AlertDescription>
+                    </Alert>
+                )}
                 {isPresence
                     ? <BackupPresenceDetails backup={backup}/>
                     : <BackupActionsForm backup={backup} action={action} onDirtyChange={setIsDirty}/>}
