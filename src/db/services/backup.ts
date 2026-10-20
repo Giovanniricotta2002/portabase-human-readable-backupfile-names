@@ -1,4 +1,3 @@
-"use server";
 import { eq } from "drizzle-orm";
 import * as drizzleDb from "@/db";
 import { db } from "@/db";

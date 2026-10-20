@@ -1,4 +1,3 @@
-"use server";
 import { action } from "@/lib/safe-actions/actions";
 import { z } from "zod";
 import { ServerActionResult } from "@/types/action-type";

@@ -8,7 +8,6 @@ import {AgentWithDatabases} from "@/db/schema/08_agent";
 import {useQuery} from "@tanstack/react-query";
 import {getAgentAction} from "@/features/agents/actions/agents.action";
 import {AgentOverrideUrlForm} from "@/features/agents/components/agent-override-url-form";
-import {generateEdgeKey} from "@/utils/edge_key";
 import {
     Accordion,
     AccordionContent,
@@ -63,15 +62,6 @@ export const AgentContentPage = ({edgeKey, agent: initialAgent, canDeleteDatabas
     const supportsDatabaseConfig = agentSupportsDatabaseConfig(agent.version);
     const unsupportedVersionHint = `Requires agent version ${MIN_DATABASE_CONFIG_AGENT_VERSION} or newer.`;
 
-    const { data: edgeKeyValue } = useQuery({
-        queryKey: ["edge-key", agent.id, agent.overrideUrl],
-        queryFn: () =>
-            agent.overrideUrl
-                ? generateEdgeKey(agent.overrideUrl, agent.id)
-                : Promise.resolve(edgeKey),
-        initialData: edgeKey,
-    });
-
     return (
         <div className="space-y-10">
             <div className="flex flex-col sm:flex-row sm:justify-between gap-6 ">
@@ -124,7 +114,7 @@ export const AgentContentPage = ({edgeKey, agent: initialAgent, canDeleteDatabas
                             <div className="flex flex-col gap-4">
                                 <AgentOverrideUrlForm agent={agent} />
                                 <AgentCardKey
-                                    edgeKey={edgeKeyValue}
+                                    edgeKey={edgeKey}
                                     agentName={agent.name}
                                 />
                             </div>

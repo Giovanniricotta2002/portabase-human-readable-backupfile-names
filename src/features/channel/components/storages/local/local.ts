@@ -1,4 +1,3 @@
-"use server";
 import { mkdir, unlink } from "fs/promises";
 import path from "path";
 import {

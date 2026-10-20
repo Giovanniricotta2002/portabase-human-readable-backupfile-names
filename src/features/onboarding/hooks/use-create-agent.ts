@@ -5,8 +5,7 @@ import { useOnboarding } from "@onboardjs/react";
 import { toast } from "sonner";
 import { createAgentAction } from "@/features/agents/actions/agents.action";
 import type { OnboardingAgent, OnboardingDefaultsData } from "@/features/onboarding/types";
-import { generateEdgeKey } from "@/utils/edge_key";
-import { getServerUrl } from "@/utils/get-server-url";
+import { getAgentEdgeKeyAction } from "@/features/agents/actions/keys.action";
 
 export const useCreateAgent = () => {
   const { state, updateContext } = useOnboarding();
@@ -25,7 +24,11 @@ export const useCreateAgent = () => {
         throw new Error(result?.serverError ?? `Failed to create agent "${name}"`);
       }
 
-      const edgeKey = await generateEdgeKey(getServerUrl(), result.data.data.id);
+      const edgeKeyResult = await getAgentEdgeKeyAction(result.data.data.id);
+      const edgeKey = edgeKeyResult?.data;
+      if (!edgeKey) {
+        throw new Error(edgeKeyResult?.serverError ?? `Failed to get key for agent "${name}"`);
+      }
 
       const newAgent: OnboardingAgent = {
         id: result.data.data.id,
