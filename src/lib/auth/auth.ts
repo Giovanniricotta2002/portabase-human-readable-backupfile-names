@@ -268,7 +268,7 @@ export const auth = betterAuth({
           roleToAssign = oidcProvider.defaultRole;
         }
 
-        if (!roleToAssign) {
+        if (!isSystemRole(roleToAssign)) {
           console.warn(
             `Access Denied for user ${usr.email}: No matching group/role found in ${providerId} config.`,
           );
