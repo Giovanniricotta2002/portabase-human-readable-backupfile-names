@@ -1,3 +1,5 @@
+import "server-only";
+
 import { SignUpUser } from "@/types/auth";
 import { hashPassword } from "better-auth/crypto";
 import { db } from "@/db";

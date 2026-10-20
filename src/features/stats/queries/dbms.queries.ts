@@ -1,3 +1,5 @@
+import "server-only";
+
 import { db } from "@/db";
 import { mvKpiDbmsTreemap } from "@/db/schema/16_dashboard-views";
 import { backup, database } from "@/db/schema/07_database";

@@ -1,3 +1,4 @@
+import "server-only";
 import * as drizzleDb from "@/db";
 import {db} from "@/db";
 import {eq} from "drizzle-orm";

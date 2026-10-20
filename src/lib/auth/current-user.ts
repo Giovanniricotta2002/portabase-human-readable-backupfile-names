@@ -1,3 +1,4 @@
+import "server-only";
 import { auth } from "@/lib/auth/auth";
 import { headers } from "next/headers";
 import { User } from "@/db/schema/02_user";

@@ -1,3 +1,4 @@
+import "server-only";
 import { action } from "@/lib/safe-actions/actions";
 import { z } from "zod";
 import { ServerActionResult } from "@/types/action-type";
@@ -22,8 +23,8 @@ export const deleteBackupCronAction = action
         return {
           success: false,
           actionError: {
-            message: "Backup not found.",
-            status: 404,
+            message: result.error ?? "Failed to delete backup.",
+            status: result.error === "Backup not found." ? 404 : 409,
             messageParams: { backupId: parsedInput.backupId },
           },
         };

@@ -5,6 +5,7 @@ export type databaseAgent = {
     dbms: EDbmsSchema;
     generatedId: string;
     pingStatus: boolean;
+    method?: string;
 };
 
 export type Body = {

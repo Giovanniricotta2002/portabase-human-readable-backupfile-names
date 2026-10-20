@@ -135,6 +135,7 @@ export const AgentContentPage = ({edgeKey, agent: initialAgent, canDeleteDatabas
                         supportsDatabaseConfig ? (
                             <DatabaseConfigModal
                                 agentId={agent.id}
+                                agentVersion={agent.version}
                                 trigger={
                                     <Button>
                                         <Plus className="h-4 w-4 mr-2" />

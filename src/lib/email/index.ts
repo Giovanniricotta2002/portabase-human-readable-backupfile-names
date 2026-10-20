@@ -1,3 +1,4 @@
+import "server-only";
 import { db } from "@/db";
 import { eq } from "drizzle-orm";
 import * as drizzleDb from "@/db";
@@ -33,8 +34,9 @@ export const sendEmail = async (data: Payload) => {
   await transporter.verify();
 
   return await transporter.sendMail({
-    ...data,
     to: emailsArray,
-    from: settings.smtpFrom ?? undefined,
+    from: settings.smtpFrom,
+    subject: data.subject,
+    html: data.html,
   });
 };

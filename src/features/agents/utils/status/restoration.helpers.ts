@@ -3,6 +3,11 @@ import {db as dbClient} from "@/db";
 import {and, eq} from "drizzle-orm";
 import {logger} from "@/lib/logger";
 import {sendNotificationsBackupRestore} from "@/features/notifications/utils/notifications.helpers";
+import type {BackupStorage} from "@/db/schema/14_storage-backup";
+import {agentSupportsRestic, MIN_RESTIC_AGENT_VERSION} from "@/features/agents/utils/version";
+import {encryptStorages} from "@/utils/status-crypto";
+import {getBackupFolderName} from "@/utils/file-prefix";
+import type {PingDatabaseStorageChannels} from "./storage-channels.helpers";
 import {withUpdatedAt} from "@/db/utils";
 import {StorageInput} from "@/features/storages/types";
 import {dispatchStorage} from "@/features/storages/utils/storages.dispatch";
@@ -39,7 +44,48 @@ export async function handleFailedRestoration(restorationId: string, databaseId:
     }
 }
 
-export async function prepareRestoration(databaseId: string): Promise<{file: string | null; metaFile: string | null; size: number | null} | null> {
+
+export async function buildResticRestore(
+    backupStorage: BackupStorage,
+    agentVersion: string | undefined,
+    masterKey: Buffer | null,
+): Promise<{ payload: Record<string, unknown> } | { error: string }> {
+    if (!agentSupportsRestic(agentVersion)) {
+        return {error: `Agent too old for snapshot restore (needs ${MIN_RESTIC_AGENT_VERSION} or later)`};
+    }
+    if (!masterKey) {
+        return {error: "Master key unavailable; cannot send the snapshot restore"};
+    }
+    try {
+        const channel = await dbClient.query.storageChannel.findFirst({
+            where: eq(drizzleDb.schemas.storageChannel.id, backupStorage.storageChannelId),
+        });
+        if (!channel) {
+            return {error: "The storage channel of this snapshot no longer exists"};
+        }
+        const storage: PingDatabaseStorageChannels = {
+            id: channel.id,
+            provider: channel.provider,
+            config: channel.config,
+            folderName: getBackupFolderName(),
+        };
+        return {
+            payload: {
+                engine: "restic",
+                snapshotId: backupStorage.path,
+                storageCiphertext: encryptStorages([storage], masterKey),
+            },
+        };
+    } catch (err) {
+        return {error: `Snapshot restore payload could not be built: ${err instanceof Error ? err.message : String(err)}`};
+    }
+}
+
+export async function prepareRestoration(
+    databaseId: string,
+    agentVersion: string | undefined,
+    masterKey: Buffer | null,
+): Promise<{file: string | null; metaFile: string | null; size: number | null; restic: Record<string, unknown> | null} | null> {
     const restoration = await dbClient.query.restoration.findFirst({
         where: and(eq(drizzleDb.schemas.restoration.databaseId, databaseId), eq(drizzleDb.schemas.restoration.status, "waiting")),
         with: {
@@ -51,6 +97,28 @@ export async function prepareRestoration(databaseId: string): Promise<{file: str
 
     if (!restoration.backupStorage || restoration.backupStorage.status != "success" || !restoration.backupStorage.path) {
         return null;
+    }
+
+    const setStatus = (status: "failed" | "ongoing") => dbClient
+        .update(drizzleDb.schemas.restoration)
+        .set(withUpdatedAt({status}))
+        .where(eq(drizzleDb.schemas.restoration.id, restoration.id));
+
+    const fail = async (reason: string) => {
+        await setStatus("failed");
+        await handleFailedRestoration(restoration.id, databaseId, reason);
+        return null;
+    };
+
+    if (restoration.backupStorage.engine === "sync") {
+        return fail("A sync replica cannot be restored.");
+    }
+
+    if (restoration.backupStorage.engine === "restic") {
+        const built = await buildResticRestore(restoration.backupStorage, agentVersion, masterKey);
+        if ("error" in built) return fail(built.error);
+        await setStatus("ongoing");
+        return {file: null, metaFile: null, size: null, restic: built.payload};
     }
 
     const input: StorageInput = {
@@ -92,34 +160,19 @@ export async function prepareRestoration(databaseId: string): Promise<{file: str
         }
 
         if (!result.success) {
-            await dbClient
-                .update(drizzleDb.schemas.restoration)
-                .set(withUpdatedAt({status: "failed"}))
-                .where(eq(drizzleDb.schemas.restoration.id, restoration.id));
-
             const errorMessage = "Failed to get backup URL";
             log.error({error: errorMessage, name: "prepareRestoration"}, "Restoration failed");
-
-            await handleFailedRestoration(restoration.id, databaseId, errorMessage);
-            return null;
+            return fail(errorMessage);
         }
 
         file = result.url ?? null;
         metaFile = resultMeta.url ?? null;
     } catch (err) {
         log.error({error: err, name: "prepareRestoration"}, "Restoration crashed unexpectedly");
-        await dbClient
-            .update(drizzleDb.schemas.restoration)
-            .set(withUpdatedAt({status: "failed"}))
-            .where(eq(drizzleDb.schemas.restoration.id, restoration.id));
-        await handleFailedRestoration(restoration.id, databaseId, "Restoration crashed unexpectedly");
-        return null;
+        return fail("Restoration crashed unexpectedly");
     }
 
-    await dbClient
-        .update(drizzleDb.schemas.restoration)
-        .set(withUpdatedAt({status: "ongoing"}))
-        .where(eq(drizzleDb.schemas.restoration.id, restoration.id));
+    await setStatus("ongoing");
 
-    return {file, metaFile, size: restoration.backupStorage.size};
+    return {file, metaFile, size: restoration.backupStorage.size, restic: null};
 }

@@ -1,3 +1,5 @@
+import "server-only";
+
 import { getOrganization } from "@/lib/auth/auth";
 import { db } from "@/db";
 import { and, eq, isNull } from "drizzle-orm";

@@ -1,3 +1,5 @@
+import "server-only";
+
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { Agent, agent, organizationAgent } from "@/db/schema/08_agent";

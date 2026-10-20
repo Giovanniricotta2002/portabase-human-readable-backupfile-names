@@ -1,3 +1,5 @@
+import "server-only";
+
 import { db } from "@/db";
 import * as drizzleDb from "@/db";
 import { and, count, eq, gte, inArray, isNull } from "drizzle-orm";

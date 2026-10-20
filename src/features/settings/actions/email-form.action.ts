@@ -4,7 +4,7 @@ import { EmailFormSchema } from "@/features/settings/schemas/email-form.schema";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as drizzleDb from "@/db";
-import {ActionError, userAction} from "@/lib/safe-actions/actions";
+import {ActionError, systemAdminAction, userAction} from "@/lib/safe-actions/actions";
 import {withUpdatedAt} from "@/db/utils";
 import {computeSystemPermissions} from "@/lib/acl/system-acl";
 import {getSettings} from "@/db/services/setting";
@@ -12,7 +12,7 @@ import {sendEmail} from "@/lib/email";
 import {render} from "@react-email/components";
 import EmailSettingsTest from "@/components/emails/email-settings-test";
 
-export const updateEmailSettingsAction = userAction
+export const updateEmailSettingsAction = systemAdminAction
     .inputSchema(
         z.object({
             name: z.string(),
