@@ -24,6 +24,14 @@ export const MIN_AGENT_VERSION_SIGNED_REQUESTS = "1.24.0";
 const AGENT_SIGNATURE_MAX_SKEW_SECONDS = 300;
 
 /**
+ * Agent-reported version safe to print in logs: the value may come from an
+ * unauthenticated request body (no newlines, escapes or oversized strings).
+ */
+export function displayVersion(version: string | null | undefined): string {
+  return version && /^[\w.+-]{1,32}$/.test(version) ? version : "unknown";
+}
+
+/**
  * Signature of an agent request. The key is derived from the master key and
  * the agent id, the signed payload binds method, path, timestamp and body:
  * hex( HMAC(HMAC(masterKey, "portabase-agent-auth:v1:" + agentId),

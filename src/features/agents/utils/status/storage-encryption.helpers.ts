@@ -1,5 +1,5 @@
 import {logger} from "@/lib/logger";
-import {encryptStorages, isAgentVersionAtLeast, MIN_AGENT_VERSION_STORAGE_ENC} from "@/utils/status-crypto";
+import {displayVersion, encryptStorages, isAgentVersionAtLeast, MIN_AGENT_VERSION_STORAGE_ENC} from "@/utils/status-crypto";
 
 const log = logger.child({module: "api/agent/status/storage-encryption"});
 
@@ -19,7 +19,7 @@ export function applyStorageEncryption(
         console.log(
             `============================================================\n` +
             `⚠️OUTDATED AGENT — STORAGE CREDENTIALS WITHHELD\n` +
-            `Agent ${agentId} reports v${version ?? "unknown"} (< required v${MIN_AGENT_VERSION_STORAGE_ENC}).\n` +
+            `Agent ${agentId} reports v${displayVersion(version)} (< required v${MIN_AGENT_VERSION_STORAGE_ENC}).\n` +
             `Update this agent to v${MIN_AGENT_VERSION_STORAGE_ENC}+ to receive storage credentials.\n` +
             `============================================================`
         )

@@ -6,7 +6,12 @@ import {logger} from "@/lib/logger";
 import {Agent} from "@/db/schema/08_agent";
 import {isUUID} from "@/utils/text";
 import {getMasterServerKeyContent} from "@/features/agents/utils/keys.server";
-import {isAgentVersionAtLeast, MIN_AGENT_VERSION_SIGNED_REQUESTS, verifyAgentSignature} from "@/utils/status-crypto";
+import {
+    displayVersion,
+    isAgentVersionAtLeast,
+    MIN_AGENT_VERSION_SIGNED_REQUESTS,
+    verifyAgentSignature
+} from "@/utils/status-crypto";
 
 const log = logger.child({module: "api/agent/backup/helpers"});
 
@@ -94,7 +99,7 @@ async function authenticateAgentRequest(request: Request, agentId: string, agent
     console.log(
         `============================================================\n` +
         `⚠️OUTDATED AGENT — REQUESTS NOT AUTHENTICATED\n` +
-        `Agent ${agentId} reports v${claimedVersion ?? agent.version ?? "unknown"} (< required v${MIN_AGENT_VERSION_SIGNED_REQUESTS}).\n` +
+        `Agent ${agentId} reports v${displayVersion(claimedVersion ?? agent.version)} (< required v${MIN_AGENT_VERSION_SIGNED_REQUESTS}).\n` +
         `Update this agent to v${MIN_AGENT_VERSION_SIGNED_REQUESTS}+ so the dashboard can authenticate it.\n` +
         `============================================================`
     );
