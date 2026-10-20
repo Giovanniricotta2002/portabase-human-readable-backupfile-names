@@ -13,7 +13,7 @@ import {withUpdatedAt} from "@/db/utils";
 export const updateNotificationSettingsAction = systemAdminAction
     .inputSchema(
         z.object({
-            name: z.string(),
+            name: z.literal("system"),
             data: DefaultNotificationSchema,
         })
     )
