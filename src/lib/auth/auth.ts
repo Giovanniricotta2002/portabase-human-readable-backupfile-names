@@ -51,7 +51,6 @@ const log = logger.child({ module: "lib/auth" });
 
 const oidcProviders = getOidcProviders();
 
-// Sessionless passkey registration is only valid while the instance has no users.
 async function assertBootstrapContext(context: string | null | undefined) {
   if (await hasUsers())
     throw new APIError("FORBIDDEN", {
@@ -324,10 +323,6 @@ export const auth = betterAuth({
               : "localhost",
             registration: {
               requireSession: false,
-              // Only reached without a session (the plugin resolves logged-in callers itself).
-              // A sessionless context may only bootstrap the first account, never bind an existing one.
-              // The account is created in afterVerification, once a credential is proven, so a cancelled
-              // ceremony leaves no orphan user. The id returned here is a placeholder.
               resolveUser: async ({ context }) => {
                 const payload = await assertBootstrapContext(context);
                 return {
