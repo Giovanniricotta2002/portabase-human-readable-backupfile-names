@@ -45,10 +45,23 @@ import { logger } from "@/lib/logger";
 import { apiKey } from "@better-auth/api-key";
 import { isSystemRole } from "@/lib/acl/role";
 import { hasUsers } from "@/db/services/user";
+import { randomUUID } from "crypto";
 
 const log = logger.child({ module: "lib/auth" });
 
 const oidcProviders = getOidcProviders();
+
+// Sessionless passkey registration is only valid while the instance has no users.
+async function assertBootstrapContext(context: string | null | undefined) {
+  if (await hasUsers())
+    throw new APIError("FORBIDDEN", {
+      message: "Passkey registration requires an authenticated session",
+    });
+  const payload = context ? verifyPasskeyContext(context) : null;
+  if (!payload)
+    throw new APIError("BAD_REQUEST", { message: "Invalid passkey context" });
+  return payload;
+}
 
 export const auth = betterAuth({
   onAPIError: {
@@ -313,33 +326,28 @@ export const auth = betterAuth({
               requireSession: false,
               // Only reached without a session (the plugin resolves logged-in callers itself).
               // A sessionless context may only bootstrap the first account, never bind an existing one.
-              resolveUser: async ({ ctx, context }) => {
-                if (await hasUsers())
-                  throw new APIError("FORBIDDEN", {
-                    message:
-                      "Passkey registration requires an authenticated session",
-                  });
-                if (!context)
-                  throw new APIError("BAD_REQUEST", {
-                    message: "Passkey context required",
-                  });
-                const payload = verifyPasskeyContext(context);
-                if (!payload)
-                  throw new APIError("BAD_REQUEST", {
-                    message: "Invalid passkey context",
-                  });
-                const newUser = await (
-                  ctx as any
-                ).context.internalAdapter.createUser({
-                  name: payload.name,
-                  email: payload.email,
-                  emailVerified: true,
-                });
+              // The account is created in afterVerification, once a credential is proven, so a cancelled
+              // ceremony leaves no orphan user. The id returned here is a placeholder.
+              resolveUser: async ({ context }) => {
+                const payload = await assertBootstrapContext(context);
                 return {
-                  id: newUser.id,
+                  id: randomUUID(),
                   name: payload.name,
                   displayName: payload.email,
                 };
+              },
+              afterVerification: async ({ ctx, context }) => {
+                if (!context) return;
+                const payload = await assertBootstrapContext(context);
+                const newUser = await ctx.context.internalAdapter.createUser(
+                  {
+                    name: payload.name,
+                    email: payload.email,
+                    emailVerified: true,
+                  },
+                  { method: "passkey" },
+                );
+                return { userId: newUser.id };
               },
             },
           }),
