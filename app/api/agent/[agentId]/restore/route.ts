@@ -46,6 +46,7 @@ export async function POST(
     const database = await db.query.database.findFirst({
       where: and(
         eq(drizzleDb.schemas.database.agentDatabaseId, body.generatedId),
+        eq(drizzleDb.schemas.database.agentId, agentId),
         isNull(drizzleDb.schemas.database.deletedAt),
       ),
       with: {

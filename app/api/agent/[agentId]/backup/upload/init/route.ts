@@ -41,7 +41,7 @@ export const POST = withAgentCheck(
         );
       }
 
-      const database = await getDatabaseOrThrow(generatedId);
+      const database = await getDatabaseOrThrow(generatedId, agent.id);
 
       const backup = await db.query.backup.findFirst({
         where: and(

@@ -33,10 +33,11 @@ export function withAgentCheck(handler: Function) {
     };
 }
 
-export async function getDatabaseOrThrow(generatedId: string) {
+export async function getDatabaseOrThrow(generatedId: string, agentId: string) {
     const database = await db.query.database.findFirst({
         where: and(
             eq(drizzleDb.schemas.database.agentDatabaseId, generatedId),
+            eq(drizzleDb.schemas.database.agentId, agentId),
             isNull(drizzleDb.schemas.database.deletedAt),
         ),
         with: {
