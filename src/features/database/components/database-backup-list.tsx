@@ -7,7 +7,6 @@ import {FilterItem, FiltersDropdown} from "@/components/common/table-filters";
 import {DataTable} from "@/components/common/data-table";
 import {useMemo, useState} from "react";
 import {Backup, BackupWith, DatabaseWith} from "@/db/schema/07_database";
-import {Setting} from "@/db/schema/01_setting";
 import {useMutation, useQueryClient} from "@tanstack/react-query";
 import {toast} from "sonner";
 import {MemberWithUser} from "@/db/schema/03_organization";
@@ -19,7 +18,6 @@ import type {FetchBackupsSchema} from "@/features/database/actions/backup-list.s
 
 type DatabaseBackupListProps = {
     isAlreadyRestore: boolean;
-    settings: Setting;
     database: DatabaseWith;
     activeMember: MemberWithUser;
 }
@@ -35,7 +33,7 @@ export const DatabaseBackupList = (props: DatabaseBackupListProps) => {
     const queryClient = useQueryClient();
 
     const columns = useMemo(() => {
-        return backupColumns(props.isAlreadyRestore, props.settings, props.database, props.activeMember);
+        return backupColumns(props.isAlreadyRestore, props.database, props.activeMember);
     }, [props.isAlreadyRestore, props.activeMember.id, props.activeMember.role]);
 
     const filter = useMemo<"available" | "deleted" | undefined>(() => {
@@ -71,11 +69,12 @@ export const DatabaseBackupList = (props: DatabaseBackupListProps) => {
                             databaseId: backup.databaseId,
                             backupId: backup.id,
                         });
+                        const inner = backupDeleted?.data;
                         return {
-                            success: backupDeleted?.data?.success,
-                            message: backupDeleted?.data?.success
-                                ? backupDeleted?.data?.actionSuccess?.message
-                                : "Failed to delete backup.",
+                            success: inner?.success,
+                            message: inner?.success
+                                ? inner.actionSuccess?.message
+                                : inner?.actionError?.message ?? "Failed to delete backup.",
                         };
                     }
                     return {

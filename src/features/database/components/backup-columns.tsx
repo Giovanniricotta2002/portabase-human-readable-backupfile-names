@@ -3,7 +3,6 @@
 import type {AppColumnDef as ColumnDef} from "@/components/common/table-features";
 import {StatusBadge} from "@/components/common/status-badge";
 import {BackupWith, DatabaseWith} from "@/db/schema/07_database";
-import {Setting} from "@/db/schema/01_setting";
 import {cn} from "@/lib/utils";
 import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from "@/components/ui/tooltip";
 import {MemberWithUser} from "@/db/schema/03_organization";
@@ -12,7 +11,9 @@ import {formatBytes, formatDuration} from "@/utils/text";
 import {DatabaseActionsCell} from "@/features/database/components/backup-actions-cell";
 import { Badge as BadgeC } from "@/components/ui/badge";
 import { CountBadge } from "@/components/common/count-badge";
-import {backupOnly} from "@/features/database/components/database-tabs";
+import {isBackupOnly} from "@/features/database/components/database-tabs";
+import {describeRun} from "@/features/database/utils/backup-method";
+import {RunChanges} from "@/features/database/components/run-changes";
 import {LogsModalTrigger} from "@/features/logs/components/logs-modal-trigger";
 import {summarizePresence} from "@/features/database/utils/backup-presence.logic";
 import {useBackupModal} from "@/features/database/components/backup-modal-context";
@@ -60,12 +61,11 @@ function StorageStatusCell({backup}: {backup: BackupWith}) {
 
 export function backupColumns(
     isAlreadyRestore: boolean,
-    settings: Setting,
     database: DatabaseWith,
     activeMember: MemberWithUser
 ): ColumnDef<BackupWith>[] {
 
-    const isBackupOnly = backupOnly.some((type) => database.dbms === type)
+    const backupOnly = isBackupOnly(database);
 
 
     return [
@@ -144,6 +144,23 @@ export function backupColumns(
                 return formatBytes(row.getValue("fileSize"))
             },
         },
+        ...(database.backupEngine === "archive" ? [] : [{
+            id: "changes",
+            header: "Changes",
+            cell: ({row}) => {
+                // One diffstat per distinct storage outcome; per-channel details are in Files.
+                const runs = new Map(
+                    (row.original.storages ?? [])
+                        .filter((s) => s.deletedAt == null && describeRun(s))
+                        .map((s) => [describeRun(s), s]),
+                );
+                return runs.size ? (
+                    <div className="flex flex-col gap-1">
+                        {[...runs].map(([summary, storage]) => <RunChanges key={summary} storage={storage}/>)}
+                    </div>
+                ) : "-";
+            },
+        } satisfies ColumnDef<BackupWith>]),
         {
             accessorKey: "durationMs",
             header: "Duration",
@@ -180,7 +197,7 @@ export function backupColumns(
         },
         {
             id: "actions",
-            cell: ({row}) => <DatabaseActionsCell isAlreadyRestore={isAlreadyRestore} activeMember={activeMember} backup={row.original} isBackupOnly={isBackupOnly}/>,
+            cell: ({row}) => <DatabaseActionsCell isAlreadyRestore={isAlreadyRestore} activeMember={activeMember} backup={row.original} isBackupOnly={backupOnly}/>,
         },
     ];
 }

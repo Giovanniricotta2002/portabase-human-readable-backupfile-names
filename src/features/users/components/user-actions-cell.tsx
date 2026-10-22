@@ -21,9 +21,10 @@ import {AdminDeleteUserModal} from "@/features/users/components/admin-user-delet
 interface UserActionsCellProps {
     user: User;
     isPasswordAuthEnabled: boolean;
+    canSendEmail: boolean;
 }
 
-export function UserActionsCell({user, isPasswordAuthEnabled}: UserActionsCellProps) {
+export function UserActionsCell({user, isPasswordAuthEnabled, canSendEmail}: UserActionsCellProps) {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isModalChangePasswordOpen, setIsModalChangePasswordOpen] = useState(false);
@@ -40,7 +41,7 @@ export function UserActionsCell({user, isPasswordAuthEnabled}: UserActionsCellPr
         <>
             <AdminUserChangeRoleModal user={user} open={isModalOpen} onOpenChange={setIsModalOpen}/>
             <AdminDeleteUserModal user={user} open={isModalDeleteOpen} onOpenChange={setIsModalDeleteOpen}/>
-            <AdminUserChangePassword user={user} open={isModalChangePasswordOpen}
+            <AdminUserChangePassword user={user} open={isModalChangePasswordOpen} canSendEmail={canSendEmail}
                                      onOpenChange={setIsModalChangePasswordOpen}/>
             <AdminUserEdit user={user} open={isModalEditUserOpen} onOpenChange={setIsModalEditUserOpen}/>
             <div className={cn("flex items-center space-x-2")}>

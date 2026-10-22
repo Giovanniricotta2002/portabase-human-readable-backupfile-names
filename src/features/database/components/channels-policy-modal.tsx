@@ -47,6 +47,7 @@ type ChannelPoliciesModalProps = {
 
 export const ChannelPoliciesModal = ({ icon, kind, scope, alertPolicies, storagePolicies, channels, organizationId, queryKey, isBackupOnly }: ChannelPoliciesModalProps) => {
     const [open, setOpen] = useState(false);
+    const [isDirty, setIsDirty] = useState(false);
     const queryClient = useQueryClient();
     const router = useRouter();
     const channelText = getChannelTextBasedOnKind(kind);
@@ -139,7 +140,7 @@ export const ChannelPoliciesModal = ({ icon, kind, scope, alertPolicies, storage
                     <CountBadge count={activePolicies?.length ?? 0} />
                 </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent preventOutsideClose={isDirty}>
                 <DialogHeader>
                     <DialogTitle>{channelText} policies</DialogTitle>
                     <DialogDescription>
@@ -147,6 +148,7 @@ export const ChannelPoliciesModal = ({ icon, kind, scope, alertPolicies, storage
                     </DialogDescription>
                     <Separator className="mt-3 mb-3" />
                     <ChannelPoliciesForm
+                        onDirtyChange={setIsDirty}
                         channels={channelsFiltered.map((c) => ({ id: c.id, name: c.name, provider: c.provider }))}
                         defaultPolicies={defaultPolicies}
                         kind={kind}

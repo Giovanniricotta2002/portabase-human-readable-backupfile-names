@@ -22,13 +22,14 @@ export type BulkRestoreModalProps = {
 export const BulkRestoreModal = (props: BulkRestoreModalProps) => {
     const {open, loading, submitting, rows, onConfirm, onCancel} = props;
     const [typed, setTyped] = useState("");
+    const handleCancel = () => { setTyped(""); onCancel(); };
 
     const restorableCount = rows.filter((r) => r.restorable).length;
     const canConfirm = restorableCount > 0 && typed.trim().toLowerCase() === CONFIRM_WORD && !submitting;
 
     return (
-        <Dialog open={open} onOpenChange={(o) => (!o ? onCancel() : undefined)}>
-            <DialogContent>
+        <Dialog open={open} onOpenChange={(o) => (!o ? handleCancel() : undefined)}>
+            <DialogContent preventOutsideClose={Boolean(typed)}>
                 <DialogHeader>
                     <DialogTitle>
                         Restore {rows.length} database(s) to latest backup
@@ -73,7 +74,7 @@ export const BulkRestoreModal = (props: BulkRestoreModalProps) => {
                 )}
 
                 <DialogFooter>
-                    <Button variant="outline" onClick={onCancel} disabled={submitting}>Cancel</Button>
+                    <Button variant="outline" onClick={handleCancel} disabled={submitting}>Cancel</Button>
                     <Button  onClick={onConfirm} disabled={!canConfirm}>
                         {submitting && <Loader2 className="animate-spin" />}
                         {restorableCount > 0 ? `Restore ${restorableCount} database(s)` : "Nothing to restore"}

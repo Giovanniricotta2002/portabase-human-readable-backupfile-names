@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import * as drizzleDb from "@/db";
 import { db as dbClient, db } from "@/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { sendNotificationsBackupRestore } from "@/features/notifications/utils/notifications.helpers";
 import { logger } from "@/lib/logger";
 import { withUpdatedAt } from "@/db/utils";
 import { JobLogEntry } from "@/features/logs/types";
 import { isUUID } from "@/utils/text";
+import { Agent } from "@/db/schema/08_agent";
+import { withAgentCheck } from "../backup/helpers";
 
 const log = logger.child({ module: "api/agent/restore" });
 
@@ -18,12 +20,12 @@ export type BodyResultRestore = {
 };
 type RestorationStatus = "waiting" | "ongoing" | "failed" | "success";
 
-export async function POST(
+async function postRestoreResult(
   request: Request,
-  { params }: { params: Promise<{ agentId: string }> },
+  { agent }: { agent: Agent },
 ) {
   try {
-    const agentId = (await params).agentId;
+    const agentId = agent.id;
     const body: BodyResultRestore = await request.json();
 
     if (!isUUID(body.generatedId)) {
@@ -33,18 +35,12 @@ export async function POST(
       );
     }
 
-    const agent = await db.query.agent.findFirst({
-      where: and(
-        eq(drizzleDb.schemas.agent.id, agentId),
-        eq(drizzleDb.schemas.agent.isArchived, false),
-      ),
-    });
-    if (!agent) {
-      return NextResponse.json({ error: "Agent not found" }, { status: 404 });
-    }
-
     const database = await db.query.database.findFirst({
-      where: eq(drizzleDb.schemas.database.agentDatabaseId, body.generatedId),
+      where: and(
+        eq(drizzleDb.schemas.database.agentDatabaseId, body.generatedId),
+        eq(drizzleDb.schemas.database.agentId, agentId),
+        isNull(drizzleDb.schemas.database.deletedAt),
+      ),
       with: {
         alertPolicies: true,
         project: { with: { alertPolicies: true } },
@@ -123,3 +119,5 @@ export async function POST(
     );
   }
 }
+
+export const POST = withAgentCheck(postRestoreResult);

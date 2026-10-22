@@ -26,7 +26,20 @@ export const userAction = action.use(async ({ next }) => {
   if (!user) {
     throw new ActionError("You must be logged in");
   }
+  // Same eligibility rule as proxy.ts: pending (unapproved) and banned accounts hold a session but no rights.
+  if (user.banned || user.role === "pending") {
+    throw new ActionError("Your account is not allowed to perform this action");
+  }
   return next({ ctx: { user } });
+});
+
+/** Instance admins (superadmin or admin): the same rule as the `(admin)` dashboard layout. */
+export const systemAdminAction = userAction.use(async ({ next, ctx }) => {
+  const permissions = computeSystemPermissions(ctx.user);
+  if (!permissions.isSuperAdmin && !permissions.isAdmin) {
+    throw new ActionError("You are not allowed to perform this action");
+  }
+  return next({ ctx: { permissions } });
 });
 
 export const superAdminAction = userAction.use(async ({ next, ctx }) => {

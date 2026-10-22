@@ -25,7 +25,7 @@ export async function GET(
 
     const fileName = path.basename(pathFromUrl);
 
-    const check = verifyBackupToken(fileName, expires, token, env.PROJECT_SECRET);
+    const check = verifyBackupToken(storageId, pathFromUrl, expires, token, env.PROJECT_SECRET);
     if (!check.ok) {
         return NextResponse.json(
             {error: `Invalid signed token: ${check.reason}`},

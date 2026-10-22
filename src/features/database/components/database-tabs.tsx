@@ -4,19 +4,20 @@ import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs";
 import {useEffect, useState} from "react";
 import {useSearchParams} from "next/navigation";
 import {DatabaseWith} from "@/db/schema/07_database";
-import {Setting} from "@/db/schema/01_setting";
 import {DatabaseBackupList} from "@/features/database/components/database-backup-list";
 import {DatabaseRestoreList} from "@/features/database/components/database-restore-list";
 import {MemberWithUser} from "@/db/schema/03_organization";
+import {BackupEngine, isSync} from "@/features/database/utils/backup-method";
 
 export type DatabaseTabsProps = {
-    settings: Setting,
     isAlreadyRestore: boolean,
     database: DatabaseWith,
     activeMember: MemberWithUser
 };
 
-export const backupOnly = ["redis", "valkey"];
+/** Sources without restoration: key-value stores, and sync replicas. */
+export const isBackupOnly = (database: {dbms: string; backupEngine: BackupEngine}) =>
+    database.dbms === "redis" || database.dbms === "valkey" || isSync(database);
 
 export const DatabaseTabs = (props: DatabaseTabsProps) => {
     const searchParams = useSearchParams();
@@ -39,14 +40,11 @@ export const DatabaseTabs = (props: DatabaseTabsProps) => {
         window.history.pushState(null, "", `?${params.toString()}`);
     };
 
-    const isBackupOnly = backupOnly.some((type) => props.database.dbms === type);
-
     return (
         <>
-            {isBackupOnly ?
+            {isBackupOnly(props.database) ?
                 <DatabaseBackupList
                     isAlreadyRestore={props.isAlreadyRestore}
-                    settings={props.settings}
                     database={props.database}
                     activeMember={props.activeMember}
                 />
@@ -59,7 +57,6 @@ export const DatabaseTabs = (props: DatabaseTabsProps) => {
                     <TabsContent className="h-full justify-between" value="backup">
                         <DatabaseBackupList
                             isAlreadyRestore={props.isAlreadyRestore}
-                            settings={props.settings}
                             database={props.database}
                             activeMember={props.activeMember}
                         />

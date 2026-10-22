@@ -35,7 +35,7 @@ export const POST = withAgentCheck(async (request: Request, {params, agent}: {
         const body: BodyPost = await request.json();
 
         const method = body.method
-        const database = await getDatabaseOrThrow(body.generatedId);
+        const database = await getDatabaseOrThrow(body.generatedId, agent.id);
 
         let backup: Backup | null | undefined = null;
 
@@ -113,10 +113,13 @@ export const PATCH = withAgentCheck(async (request: Request, {params, agent}: {
         const backupId = body.backupId
         const backupSize = body.size
 
-        const database = await getDatabaseOrThrow(body.generatedId);
+        const database = await getDatabaseOrThrow(body.generatedId, agent.id);
 
         const backup = await db.query.backup.findFirst({
-            where: eq(drizzleDb.schemas.backup.id, backupId),
+            where: and(
+                eq(drizzleDb.schemas.backup.id, backupId),
+                eq(drizzleDb.schemas.backup.databaseId, database.id),
+            ),
         });
 
         if (!backup) {

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { EDbmsSchema } from "@/db/schema/types";
+import { canonicalize } from "@/lib/utils";
 
 const req = (label: string) =>
   z.string({ error: `${label} is required` }).min(1, `${label} is required`);
@@ -23,22 +24,24 @@ const username = req("Username");
 const password = req("Password");
 const databaseName = req("Database");
 
-const PostgresOptionsSchema = z
-  .object({
-    keep_ownership: z.boolean().optional(),
-    clean_mode: z
-      .enum(["none", "clean", "drop_schemas", "drop_database"])
-      .nullish(),
-  })
-  .optional();
+const PostgresOptionsBase = z.object({
+  keep_ownership: z.boolean().optional(),
+  clean_mode: z
+    .enum(["none", "clean", "drop_schemas", "drop_database"])
+    .nullish(),
+});
 
 export const PostgresqlConfigSchema = z.object({
-  host, port, username, password, database: databaseName, options: PostgresOptionsSchema,
+  host, port, username, password, database: databaseName,
+  options: PostgresOptionsBase.extend({
+    exclude_tables: z.array(z.string()).optional(),
+    exclude_schemas: z.array(z.string()).optional(),
+  }).optional(),
 });
 export const PostgresqlClusterConfigSchema = z.object({
   host, port, username, password,
   database: z.string().optional().default("postgres"),
-  options: PostgresOptionsSchema,
+  options: PostgresOptionsBase.optional(),
 });
 export const MysqlConfigSchema = z.object({
   host, port, username, password, database: databaseName,
@@ -85,6 +88,19 @@ export const DockerVolumeConfigSchema = z.object({
   volume_name: req("Volume name"),
   container_name: z.string().optional(),
 });
+export const FilesConfigSchema = z.object({
+  path: req("Path").refine(
+    (p) => p.startsWith("/") && p.replace(/\/+$/, "") !== "",
+    "Path must be absolute and not /",
+  ),
+  options: z
+    .object({
+      exclude: z.array(z.string()).optional(),
+      one_file_system: z.boolean().optional(),
+      method: z.enum(["archive", "snapshot", "sync"]).optional(),
+    })
+    .optional(),
+});
 
 const BaseDb = z.object({
   name: req("Name").max(255),
@@ -102,6 +118,7 @@ export const DatabaseConfigFormSchema = z.discriminatedUnion("dbms", [
   BaseDb.extend({ dbms: z.literal("firebird"), config: FirebirdConfigSchema }),
   BaseDb.extend({ dbms: z.literal("sqlite"), config: SqliteConfigSchema }),
   BaseDb.extend({ dbms: z.literal("docker-volume"), config: DockerVolumeConfigSchema }),
+  BaseDb.extend({ dbms: z.literal("files"), config: FilesConfigSchema }),
 ]);
 
 export type DatabaseConfigFormType = z.infer<typeof DatabaseConfigFormSchema>;
@@ -109,11 +126,12 @@ export type DatabaseConfigFormType = z.infer<typeof DatabaseConfigFormSchema>;
 export type FieldDef = {
   name: string;
   label: string;
-  widget: "text" | "password" | "number" | "switch" | "select";
+  widget: "text" | "password" | "number" | "switch" | "select" | "lines";
   placeholder?: string;
   options?: { value: string; label: string }[];
   clearable?: boolean;
   description?: string;
+  lockedOnEdit?: boolean;
 };
 
 const f = (name: string, label: string, widget: FieldDef["widget"], placeholder?: string, options?: FieldDef["options"]): FieldDef =>
@@ -138,6 +156,16 @@ const CLEAN_MODE: FieldDef = {
   ]),
   clearable: true,
 };
+const EXCLUDE_TABLES: FieldDef = {
+  ...f("options.exclude_tables", "Exclude tables", "lines", "public.search_index__*"),
+  description:
+    "One pg_dump pattern per line (--exclude-table). Excluded tables are dropped on restore with drop_schemas or drop_database.",
+};
+const EXCLUDE_SCHEMAS: FieldDef = {
+  ...f("options.exclude_schemas", "Exclude schemas", "lines", "metabase_tmp"),
+  description:
+    "One pg_dump pattern per line (--exclude-schema). Excluded schemas are dropped on restore with drop_schemas or drop_database.",
+};
 const BACKUP_FORMAT: FieldDef = {
   ...f("options.backup_format", "Backup format", "select", undefined, [
     { value: "dacpac", label: "dacpac (agent default)" },
@@ -147,7 +175,7 @@ const BACKUP_FORMAT: FieldDef = {
 };
 
 export const databaseFieldDefs: Record<EDbmsSchema, FieldDef[]> = {
-  postgresql: [HOST, PORT, USER, PASS, DB, KEEP_OWNERSHIP, CLEAN_MODE],
+  postgresql: [HOST, PORT, USER, PASS, DB, KEEP_OWNERSHIP, CLEAN_MODE, EXCLUDE_TABLES, EXCLUDE_SCHEMAS],
   "postgresql-cluster": [HOST, PORT, USER, PASS, f("database", "Database", "text", "defaults to postgres"), KEEP_OWNERSHIP, CLEAN_MODE],
   mysql: [HOST, PORT, USER, PASS, DB, f("max_packet_size", "Max packet size", "text", "512M")],
   mariadb: [HOST, PORT, USER, PASS, DB, f("max_packet_size", "Max packet size", "text", "512M")],
@@ -168,6 +196,28 @@ export const databaseFieldDefs: Record<EDbmsSchema, FieldDef[]> = {
   firebird: [HOST, PORT, DB, USER_OPT, PASS_OPT],
   sqlite: [f("path", "Path *", "text", "/data/app.db"), DB_OPT],
   "docker-volume": [f("volume_name", "Volume name *", "text", "e.g. postgres_data"), f("container_name", "Container name", "text", "optional")],
+  files: [
+    f("path", "Path *", "text", "/data/files"),
+    {
+      ...f("options.method", "Method *", "select", undefined, [
+        { value: "archive", label: "Archive (tar)" },
+        { value: "snapshot", label: "Snapshots" },
+        { value: "sync", label: "Sync" },
+      ]),
+      lockedOnEdit: true,
+      description:
+        "Archive: one tar(.gz) file per run. Snapshots: incremental, deduplicated restic history. " +
+        "Sync: a mirror of the directory on each storage; deletions and ransomware propagate, keep Archive or Snapshots for history. " +
+        "Set at creation; it cannot be changed afterwards.",
+    },
+    {
+      ...f("options.exclude", "Exclude", "lines", "node_modules\n*.tmp\n/cache"),
+      description:
+        "One pattern per line. Without a leading / it matches at any depth; with a leading / it is relative to Path. " +
+        "With Sync, files matching a pattern are deleted from the replica on the next run.",
+    },
+    f("options.one_file_system", "Stay on one file system", "switch"),
+  ],
 };
 
 export const databaseTypeOptions: { value: EDbmsSchema; label: string }[] = [
@@ -182,6 +232,7 @@ export const databaseTypeOptions: { value: EDbmsSchema; label: string }[] = [
   { value: "firebird", label: "Firebird" },
   { value: "sqlite", label: "SQLite" },
   { value: "docker-volume", label: "Docker Volume" },
+  { value: "files", label: "Files" },
 ];
 
 export function defaultConfigFor(dbms: EDbmsSchema): Record<string, unknown> {
@@ -192,6 +243,8 @@ export function defaultConfigFor(dbms: EDbmsSchema): Record<string, unknown> {
     case "mysql":
     case "mariadb":
       return { max_packet_size: "512M" };
+    case "files":
+      return { path: "", options: { exclude: [], one_file_system: false, method: "archive" } };
     default:
       return {};
   }
@@ -223,6 +276,13 @@ export function pruneAgentConfig(
   for (const [key, value] of Object.entries(options as Record<string, unknown>)) {
     if (value === undefined || value === null || value === "") continue;
     if (value === false) continue; // default-off switches (keep_ownership, tls) ship nothing
+    if (Array.isArray(value)) {
+      const items = value
+        .map((v) => (typeof v === "string" ? v.trim() : v))
+        .filter((v) => v !== "" && v !== null && v !== undefined);
+      if (items.length > 0) kept[key] = items;
+      continue;
+    }
     kept[key] = value;
   }
 
@@ -241,21 +301,6 @@ export function toAgentConfigJson(
     ...pruneAgentConfig(values.config),
     ...(generatedId ? { generated_id: generatedId } : {}),
   };
-}
-
-const isPlainObject = (v: unknown): v is Record<string, unknown> =>
-  typeof v === "object" && v !== null && !Array.isArray(v);
-
-function canonicalize(value: unknown): unknown {
-  if (!isPlainObject(value)) return value;
-  const out: Record<string, unknown> = {};
-  for (const key of Object.keys(value).sort()) {
-    const inner = canonicalize(value[key]);
-    if (inner === undefined || inner === null || inner === "") continue;
-    if (isPlainObject(inner) && Object.keys(inner).length === 0) continue;
-    out[key] = inner;
-  }
-  return out;
 }
 
 export function agentConfigSignature(

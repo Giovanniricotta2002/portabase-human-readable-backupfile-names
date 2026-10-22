@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, useZodForm } from "@/components/ui/form";
 import { Loader2, Copy, CheckCircle2 } from "lucide-react";
@@ -15,6 +15,7 @@ import z from "zod";
 import { zPassword } from "@/lib/zod";
 import { BackupCodesList } from "./backup-codes-list";
 import { PasswordInput } from "@/components/ui/password-input";
+import {useFormState} from "react-hook-form";
 
 const PasswordSchema = z.object({ password: z.string().min(1, "Password required") });
 
@@ -22,9 +23,10 @@ type Password = z.infer<typeof PasswordSchema>;
 
 type Props = {
   onSuccess: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 };
 
-export function TwoFactorSetupContent({ onSuccess }: Props) {
+export function TwoFactorSetupContent({ onSuccess, onDirtyChange }: Props) {
   const [step, setStep] = useState<"PASSWORD" | "QR" | "BACKUP">("PASSWORD");
   const [totpURI, setTotpURI] = useState("");
   const [secret, setSecret] = useState("");
@@ -32,6 +34,11 @@ export function TwoFactorSetupContent({ onSuccess }: Props) {
 
   const otpForm = useZodForm({ schema: Setup2FASecuritySchema, defaultValues: { code: "" } });
   const passwordForm = useZodForm({ schema: PasswordSchema, defaultValues: { password: "" } });
+  const {isDirty: passwordDirty} = useFormState({control: passwordForm.control});
+  useEffect(() => {
+    onDirtyChange?.(step !== "PASSWORD" || passwordDirty);
+    return () => onDirtyChange?.(false);
+  }, [step, passwordDirty, onDirtyChange]);
 
   const { mutate: enable2FA, isPending: isEnabling } = useMutation({
     mutationFn: async (values: Password) => {

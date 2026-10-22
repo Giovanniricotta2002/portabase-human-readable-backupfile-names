@@ -6,9 +6,10 @@ import {User} from "@/db/schema/02_user";
 type AdminUserListProps = {
     users: User[];
     isPasswordAuthEnabled: boolean;
+    canSendEmail: boolean;
     avatarUrls?: Record<string, string | undefined>;
 };
 
-export const AdminUserList = ({ users, isPasswordAuthEnabled, avatarUrls }: AdminUserListProps) => {
-    return <DataTable columns={usersListColumns({ isPasswordAuthEnabled, avatarUrls })} data={users} enablePagination={true} enableSelect={false} />;
+export const AdminUserList = ({ users, isPasswordAuthEnabled, canSendEmail, avatarUrls }: AdminUserListProps) => {
+    return <DataTable columns={usersListColumns({ isPasswordAuthEnabled, canSendEmail, avatarUrls })} data={users} enablePagination={true} enableSelect={false} />;
 };

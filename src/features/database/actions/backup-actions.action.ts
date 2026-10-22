@@ -1,15 +1,25 @@
 "use server"
-import {userAction} from "@/lib/safe-actions/actions";
+import {ActionError, userAction} from "@/lib/safe-actions/actions";
 import {ServerActionResult} from "@/types/action-type";
 import {z} from "zod";
 import type {StorageInput} from "@/features/storages/types";
 import {dispatchStorage} from "@/features/storages/utils/storages.dispatch";
 import {refreshBackupManifestsForBackup} from "@/features/storages/utils/backup-manifest";
 import {db} from "@/db";
-import {and, eq, isNull, ne, sql} from "drizzle-orm";
+import {and, eq, isNull, sql} from "drizzle-orm";
 import * as drizzleDb from "@/db";
 import {Backup, Restoration} from "@/db/schema/07_database";
 import {withUpdatedAt} from "@/db/utils";
+import {deleteBackupService, deleteBackupStorageObject} from "@/lib/tasks/database/utils/backup-delete.service";
+import {assertCanOperateDatabase} from "@/features/database/utils/database-acl";
+
+async function authorize(databaseId: string): Promise<void> {
+    try {
+        await assertCanOperateDatabase(databaseId);
+    } catch {
+        throw new ActionError("Not authorized");
+    }
+}
 
 
 export const downloadBackupAction = userAction.inputSchema(
@@ -22,7 +32,7 @@ export const downloadBackupAction = userAction.inputSchema(
 
         const backupStorage = await db.query.backupStorage.findFirst({
             where: eq(drizzleDb.schemas.backupStorage.id, backupStorageId),
-
+            with: {backup: {columns: {databaseId: true}}},
         });
 
         if (!backupStorage) {
@@ -35,6 +45,7 @@ export const downloadBackupAction = userAction.inputSchema(
                 },
             };
         }
+        await authorize(backupStorage.backup.databaseId);
         if (backupStorage.status !== "success" || !backupStorage.path) {
             return {
                 success: false,
@@ -50,6 +61,26 @@ export const downloadBackupAction = userAction.inputSchema(
                 success: false,
                 actionError: {
                     message: "This backup file is missing and cannot be downloaded.",
+                    status: 409,
+                    messageParams: {backupStorageId: backupStorageId},
+                },
+            }
+        }
+        if (backupStorage.engine === "restic") {
+            return {
+                success: false,
+                actionError: {
+                    message: "Snapshots cannot be downloaded as a file.",
+                    status: 409,
+                    messageParams: {backupStorageId: backupStorageId},
+                },
+            }
+        }
+        if (backupStorage.engine === "sync") {
+            return {
+                success: false,
+                actionError: {
+                    message: "A sync replica cannot be downloaded as a file.",
                     status: 409,
                     messageParams: {backupStorageId: backupStorageId},
                 },
@@ -102,11 +133,19 @@ export const createRestorationBackupAction = userAction
         })
     )
     .action(async ({parsedInput}): Promise<ServerActionResult<Restoration>> => {
+        await authorize(parsedInput.databaseId);
         try {
             const backupStorage = await db.query.backupStorage.findFirst({
                 where: eq(drizzleDb.schemas.backupStorage.id, parsedInput.backupStorageId),
+                with: {backup: {columns: {databaseId: true}}},
             });
-            if (!backupStorage || backupStorage.status !== "success") {
+            // Only a backup of this database can be restored into it.
+            if (
+                !backupStorage ||
+                backupStorage.backupId !== parsedInput.backupId ||
+                backupStorage.backup.databaseId !== parsedInput.databaseId ||
+                backupStorage.status !== "success"
+            ) {
                 return {
                     success: false,
                     actionError: {
@@ -121,6 +160,16 @@ export const createRestorationBackupAction = userAction
                     success: false,
                     actionError: {
                         message: "This backup file is missing and cannot be restored.",
+                        status: 409,
+                        messageParams: {backupStorageId: parsedInput.backupStorageId},
+                    },
+                };
+            }
+            if (backupStorage.engine === "sync") {
+                return {
+                    success: false,
+                    actionError: {
+                        message: "A sync replica cannot be restored.",
                         status: 409,
                         messageParams: {backupStorageId: parsedInput.backupStorageId},
                     },
@@ -172,10 +221,12 @@ export const deleteBackupStorageAction = userAction
     )
     .action(async ({parsedInput}): Promise<ServerActionResult<Backup>> => {
         const {backupId, databaseId, backupStorageId} = parsedInput;
+        await authorize(databaseId);
 
         try {
             const backup = await db.query.backup.findFirst({
-                where: and(eq(drizzleDb.schemas.backup.id, backupId), eq(drizzleDb.schemas.backup.databaseId, databaseId))
+                where: and(eq(drizzleDb.schemas.backup.id, backupId), eq(drizzleDb.schemas.backup.databaseId, databaseId)),
+                with: {database: {columns: {agentDatabaseId: true}}},
             });
 
             if (!backup) {
@@ -189,14 +240,12 @@ export const deleteBackupStorageAction = userAction
                 }
             }
 
-
             const backupStorage = await db.query.backupStorage.findFirst({
                 where: and(
                     eq(drizzleDb.schemas.backupStorage.id, backupStorageId),
-                    eq(drizzleDb.schemas.backupStorage.backupId, backupId)
+                    eq(drizzleDb.schemas.backupStorage.backupId, backupId),
                 ),
             });
-
 
             if (!backupStorage) {
                 return {
@@ -209,6 +258,17 @@ export const deleteBackupStorageAction = userAction
                 };
             }
 
+            const result = await deleteBackupStorageObject(backupStorage, backup.database.agentDatabaseId);
+            if (!result.deleted) {
+                return {
+                    success: false,
+                    actionError: {
+                        message: result.error ?? "Failed to delete backup.",
+                        status: 409,
+                        messageParams: {backupStorageId: backupStorageId},
+                    },
+                };
+            }
 
             const [{count}] = await db
                 .select({count: sql<number>`count(*)`})
@@ -217,10 +277,8 @@ export const deleteBackupStorageAction = userAction
                     and(
                         eq(drizzleDb.schemas.backupStorage.backupId, backupId),
                         isNull(drizzleDb.schemas.backupStorage.deletedAt),
-                        ne(drizzleDb.schemas.backupStorage.id, backupStorageId)
                     )
                 );
-
 
             if (Number(count) === 0) {
                 await db
@@ -232,35 +290,7 @@ export const deleteBackupStorageAction = userAction
                     .where(and(eq(drizzleDb.schemas.backup.id, backupId), eq(drizzleDb.schemas.backup.databaseId, databaseId)))
             }
 
-            await db
-                .update(drizzleDb.schemas.backupStorage)
-                .set(withUpdatedAt({
-                    deletedAt: new Date(),
-                }))
-                .where(eq(drizzleDb.schemas.backupStorage.id, backupStorageId))
-
             await refreshBackupManifestsForBackup(backupId)
-
-            if (backupStorage.status !== "success" || !backupStorage.path) {
-                return {
-                    success: false,
-                    actionError: {
-                        message: "An error occurred.",
-                        status: 500,
-                        messageParams: {backupStorageId: backupStorageId},
-                    },
-                }
-            }
-
-
-            const input: StorageInput = {
-                action: "delete",
-                data: {
-                    path: backupStorage.path,
-                },
-            };
-
-            await dispatchStorage(input, undefined, backupStorage.storageChannelId);
 
             return {
                 success: true,
@@ -292,77 +322,24 @@ export const deleteBackupAction = userAction
     )
     .action(async ({parsedInput}): Promise<ServerActionResult<Backup>> => {
         const {backupId, databaseId} = parsedInput;
+        await authorize(databaseId);
 
         try {
-            const backup = await db.query.backup.findFirst({
-                where: and(eq(drizzleDb.schemas.backup.id, backupId), eq(drizzleDb.schemas.backup.databaseId, databaseId))
-            });
+            const result = await deleteBackupService(backupId, databaseId);
 
-            if (!backup) {
+            if (!result.ok) {
                 return {
                     success: false,
                     actionError: {
-                        message: "Backup not found.",
-                        status: 404,
+                        message: result.error ?? "Failed to delete backup.",
+                        status: result.error === "Backup not found." ? 404 : 409,
                         messageParams: {backupId: backupId},
                     },
                 }
             }
-
-
-            const backupStorages = await db.query.backupStorage.findMany({
-                where: eq(drizzleDb.schemas.backupStorage.backupId, backupId),
-            });
-
-
-            if (!backupStorages) {
-                return {
-                    success: false,
-                    actionError: {
-                        message: "Backup storage not found.",
-                        status: 404,
-                        messageParams: {backupId: backupId},
-                    },
-                };
-            }
-
-            for (const backupStorage of backupStorages) {
-
-                await db
-                    .update(drizzleDb.schemas.backupStorage)
-                    .set(withUpdatedAt({
-                        deletedAt: new Date(),
-                    }))
-                    .where(eq(drizzleDb.schemas.backupStorage.id, backupStorage.id))
-
-                if (backupStorage.status !== "success" || !backupStorage.path) {
-                    continue;
-                }
-
-                const input: StorageInput = {
-                    action: "delete",
-                    data: {
-                        path: backupStorage.path,
-                    },
-                };
-
-                await dispatchStorage(input, undefined, backupStorage.storageChannelId);
-
-            }
-
-            await db
-                .update(drizzleDb.schemas.backup)
-                .set(withUpdatedAt({
-                    deletedAt: new Date(),
-                    status: backup.status === "ongoing" ? "failed" : backup.status
-                }))
-                .where(and(eq(drizzleDb.schemas.backup.id, backupId), eq(drizzleDb.schemas.backup.databaseId, databaseId)))
-
-            await refreshBackupManifestsForBackup(backupId)
 
             return {
                 success: true,
-                value: backup,
                 actionSuccess: {
                     message: `Backup deleted successfully (ref: ${parsedInput.backupId}).`,
                 },

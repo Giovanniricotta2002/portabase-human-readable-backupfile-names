@@ -1,8 +1,17 @@
 import {NextResponse} from "next/server";
-import {and, eq} from "drizzle-orm";
+import {and, eq, isNull} from "drizzle-orm";
 import {db} from "@/db";
 import * as drizzleDb from "@/db";
 import {logger} from "@/lib/logger";
+import {Agent} from "@/db/schema/08_agent";
+import {isUUID} from "@/utils/text";
+import {getMasterServerKeyContent} from "@/features/agents/utils/keys.server";
+import {
+    displayVersion,
+    isAgentVersionAtLeast,
+    MIN_AGENT_VERSION_SIGNED_REQUESTS,
+    verifyAgentSignature
+} from "@/utils/status-crypto";
 
 const log = logger.child({module: "api/agent/backup/helpers"});
 
@@ -11,9 +20,11 @@ export function withAgentCheck(handler: Function) {
         try {
             const agentId = (await context.params).agentId;
 
-            const agent = await db.query.agent.findFirst({
-                where: and(eq(drizzleDb.schemas.agent.id, agentId), eq(drizzleDb.schemas.agent.isArchived, false)),
-            });
+            const agent = isUUID(agentId)
+                ? await db.query.agent.findFirst({
+                    where: and(eq(drizzleDb.schemas.agent.id, agentId), eq(drizzleDb.schemas.agent.isArchived, false)),
+                })
+                : undefined;
 
             if (!agent) {
                 return NextResponse.json(
@@ -21,6 +32,9 @@ export function withAgentCheck(handler: Function) {
                     {status: 404}
                 );
             }
+
+            const rejection = await authenticateAgentRequest(request, agentId, agent);
+            if (rejection) return rejection;
 
             return handler(request, {...context, agent});
         } catch (err) {
@@ -33,9 +47,66 @@ export function withAgentCheck(handler: Function) {
     };
 }
 
-export async function getDatabaseOrThrow(generatedId: string) {
+async function authenticateAgentRequest(request: Request, agentId: string, agent: Agent): Promise<NextResponse | null> {
+    const signature = request.headers.get("x-agent-signature");
+
+    if (signature) {
+        let masterKey: Buffer;
+        try {
+            masterKey = await getMasterServerKeyContent();
+        } catch (err) {
+            log.error({error: err, agentId}, "Master key unavailable; cannot verify agent signature");
+            return NextResponse.json({error: "Invalid agent signature"}, {status: 401});
+        }
+
+        const body = new Uint8Array(await request.clone().arrayBuffer());
+        const result = verifyAgentSignature(
+            masterKey,
+            agentId,
+            request.method,
+            new URL(request.url).pathname,
+            request.headers.get("x-agent-timestamp"),
+            signature,
+            body,
+        );
+        if (result === "ok") return null;
+
+        log.warn({agentId, result}, "Rejected agent request with an invalid signature");
+        return NextResponse.json(
+            {error: result === "skew" ? "Agent clock skew" : "Invalid agent signature"},
+            {status: 401}
+        );
+    }
+
+    if (isAgentVersionAtLeast(agent.version ?? undefined, MIN_AGENT_VERSION_SIGNED_REQUESTS)) {
+        log.warn({agentId}, "Unsigned request for an agent that signs its requests");
+        return NextResponse.json({error: "Agent signature required"}, {status: 401});
+    }
+
+    const claimed = (await request.clone().json().catch(() => null))?.version;
+    const claimedVersion = typeof claimed === "string" ? claimed : undefined;
+    if (isAgentVersionAtLeast(claimedVersion, MIN_AGENT_VERSION_SIGNED_REQUESTS)) {
+        log.warn({agentId, claimedVersion}, "Unsigned request claiming a signing agent version");
+        return NextResponse.json({error: "Agent signature required"}, {status: 401});
+    }
+
+    console.log(
+        `============================================================\n` +
+        `⚠️OUTDATED AGENT — REQUESTS NOT AUTHENTICATED\n` +
+        `Agent ${agentId} reports v${displayVersion(claimedVersion ?? agent.version)} (< required v${MIN_AGENT_VERSION_SIGNED_REQUESTS}).\n` +
+        `Update this agent to v${MIN_AGENT_VERSION_SIGNED_REQUESTS}+ so the dashboard can authenticate it.\n` +
+        `============================================================`
+    );
+    return null;
+}
+
+export async function getDatabaseOrThrow(generatedId: string, agentId: string) {
     const database = await db.query.database.findFirst({
-        where: eq(drizzleDb.schemas.database.agentDatabaseId, generatedId),
+        where: and(
+            eq(drizzleDb.schemas.database.agentDatabaseId, generatedId),
+            eq(drizzleDb.schemas.database.agentId, agentId),
+            isNull(drizzleDb.schemas.database.deletedAt),
+        ),
         with: {
             project: { with: { alertPolicies: true } },
             alertPolicies: true,

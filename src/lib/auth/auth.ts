@@ -43,10 +43,24 @@ import { APIError } from "better-auth/api";
 import { getOAuthProviders } from "./oauth";
 import { logger } from "@/lib/logger";
 import { apiKey } from "@better-auth/api-key";
+import { isSystemRole } from "@/lib/acl/role";
+import { hasUsers } from "@/db/services/user";
+import { randomUUID } from "crypto";
 
 const log = logger.child({ module: "lib/auth" });
 
 const oidcProviders = getOidcProviders();
+
+async function assertBootstrapContext(context: string | null | undefined) {
+  if (await hasUsers())
+    throw new APIError("FORBIDDEN", {
+      message: "Passkey registration requires an authenticated session",
+    });
+  const payload = context ? verifyPasskeyContext(context) : null;
+  if (!payload)
+    throw new APIError("BAD_REQUEST", { message: "Invalid passkey context" });
+  return payload;
+}
 
 export const auth = betterAuth({
   onAPIError: {
@@ -267,7 +281,7 @@ export const auth = betterAuth({
           roleToAssign = oidcProvider.defaultRole;
         }
 
-        if (!roleToAssign) {
+        if (!isSystemRole(roleToAssign)) {
           console.warn(
             `Access Denied for user ${usr.email}: No matching group/role found in ${providerId} config.`,
           );
@@ -309,48 +323,26 @@ export const auth = betterAuth({
               : "localhost",
             registration: {
               requireSession: false,
-              resolveUser: async ({ ctx, context }) => {
-                const session = (ctx as any).context?.session;
-                if (session?.user?.id) {
-                  return {
-                    id: session.user.id,
-                    name: session.user.name || session.user.email,
-                    displayName: session.user.email,
-                  };
-                }
-                if (!context)
-                  throw new APIError("BAD_REQUEST", {
-                    message: "Passkey context required",
-                  });
-                const payload = verifyPasskeyContext(context);
-                if (!payload)
-                  throw new APIError("BAD_REQUEST", {
-                    message: "Invalid passkey context",
-                  });
-                const [existing] = await db
-                  .select()
-                  .from(drizzleDb.schemas.user)
-                  .where(eq(drizzleDb.schemas.user.email, payload.email))
-                  .limit(1);
-                if (existing) {
-                  return {
-                    id: existing.id,
-                    name: existing.name || payload.name,
-                    displayName: payload.email,
-                  };
-                }
-                const newUser = await (
-                  ctx as any
-                ).context.internalAdapter.createUser({
-                  name: payload.name,
-                  email: payload.email,
-                  emailVerified: true,
-                });
+              resolveUser: async ({ context }) => {
+                const payload = await assertBootstrapContext(context);
                 return {
-                  id: newUser.id,
+                  id: randomUUID(),
                   name: payload.name,
                   displayName: payload.email,
                 };
+              },
+              afterVerification: async ({ ctx, context }) => {
+                if (!context) return;
+                const payload = await assertBootstrapContext(context);
+                const newUser = await ctx.context.internalAdapter.createUser(
+                  {
+                    name: payload.name,
+                    email: payload.email,
+                    emailVerified: true,
+                  },
+                  { method: "passkey" },
+                );
+                return { userId: newUser.id };
               },
             },
           }),
@@ -441,6 +433,9 @@ export const auth = betterAuth({
     user: {
       update: {
         async before(user) {
+          if ("role" in user && !isSystemRole(user.role)) {
+            throw new APIError("BAD_REQUEST", { message: "Invalid role" });
+          }
           if (env.AUTH_EMAIL_PASSWORD_ENABLED !== "true") {
             if (user.password || user.lastChangedPasswordAt) {
               throw new APIError("FORBIDDEN", {
@@ -455,6 +450,9 @@ export const auth = betterAuth({
       },
       create: {
         async before(user) {
+          if (user.role !== undefined && !isSystemRole(user.role)) {
+            throw new APIError("BAD_REQUEST", { message: "Invalid role" });
+          }
           const userCount = (
             await db.select({ count: count() }).from(drizzleDb.schemas.user)
           )[0].count;

@@ -21,15 +21,16 @@ type ImportModalProps = {
 
 export const ImportModal = ({database}: ImportModalProps) => {
     const [open, setOpen] = useState(false);
+    const [hasFile, setHasFile] = useState(false);
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(nextOpen) => { setOpen(nextOpen); if (!nextOpen) setHasFile(false); }}>
             <DialogTrigger asChild>
                 <Button variant="outline" onClick={() => setOpen(true)}>
                     <Import/>
                 </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent preventOutsideClose={hasFile}>
                 <DialogHeader>
                     <DialogTitle>Import Backup</DialogTitle>
                     <DialogDescription>
@@ -37,7 +38,8 @@ export const ImportModal = ({database}: ImportModalProps) => {
                     </DialogDescription>
                     <Separator className="mt-3 "/>
                     <UploadBackupZone
-                        onSuccessAction={() => setOpen(false)}
+                        onFileChange={setHasFile}
+                        onSuccessAction={() => { setOpen(false); setHasFile(false); }}
                         database={database}/>
                 </DialogHeader>
             </DialogContent>

@@ -23,6 +23,10 @@ export const AdminUserChangeRoleModal = (props: AdminUserChangeRoleModalProps) =
     const { user, open, onOpenChange } = props;
     const router = useRouter();
     const [role, setRole] = useState<string | null>(user.role);
+    const handleOpenChange = (nextOpen: boolean) => {
+        if (!nextOpen) setRole(user.role);
+        onOpenChange(nextOpen);
+    };
 
     const mutation = useMutation({
         mutationFn: async () => {
@@ -35,12 +39,12 @@ export const AdminUserChangeRoleModal = (props: AdminUserChangeRoleModalProps) =
                 {
                     onSuccess: async (response) => {
                         toast.success("User role changed successfully.");
-                        onOpenChange(false);
+                        handleOpenChange(false);
                         router.refresh();
                     },
                     onError: async (_error) => {
                         toast.error("An error occurred while updating user roles.");
-                        onOpenChange(false);
+                        handleOpenChange(false);
                     },
                 }
             );
@@ -48,8 +52,8 @@ export const AdminUserChangeRoleModal = (props: AdminUserChangeRoleModalProps) =
     });
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
+            <DialogContent preventOutsideClose={role !== user.role}>
                 <DialogHeader>
                     <DialogTitle>Change the user's role</DialogTitle>
                     <DialogDescription>Modify this user's role within your organization.</DialogDescription>
@@ -69,7 +73,7 @@ export const AdminUserChangeRoleModal = (props: AdminUserChangeRoleModalProps) =
                         <ButtonWithLoading
                             variant="outline"
                             onClick={() => {
-                                onOpenChange(false);
+                                handleOpenChange(false);
                             }}
                         >
                             Cancel
